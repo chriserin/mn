@@ -1,0 +1,132 @@
+Feature: Tempo training
+  As a musician using the metronome TUI
+  I want the tempo to automatically increase every N measures
+  So that I can train up to faster tempos without manually bumping BPM
+
+  Background:
+    Given the metronome app has started
+
+  @ft:12
+  Scenario: Enable tempo training
+    Given the metronome is playing
+    When  I press "t"
+    Then  the tempo training line should read "Tempo Training: on"
+
+  @ft:13
+  Scenario: Disable tempo training
+    Given tempo training is enabled
+    When  I press "t"
+    Then  the tempo training line should read "Tempo Training: off"
+
+  @ft:14
+  Scenario: Tempo training increases BPM after the configured number of measures
+    Given tempo training is enabled with step 10 BPM every 8 measures
+    And   the BPM is 120
+    And   the metronome is playing
+    When  8 measures have elapsed
+    Then  the BPM readout should show "♩ = 130 BPM"
+
+  @ft:15
+  Scenario: Tempo training stops increasing at the target BPM
+    Given tempo training is enabled with step 10 BPM every 8 measures and a target of 130
+    And   the BPM is 120
+    And   the metronome is playing
+    When  8 measures have elapsed
+    Then  the BPM readout should show "♩ = 130 BPM"
+    When  8 more measures have elapsed
+    Then  the BPM readout should still show "♩ = 130 BPM"
+    And   the tempo training line should read "Tempo Training: target reached (130 bpm)"
+
+  @ft:16
+  Scenario: Tempo training does not advance while stopped
+    Given tempo training is enabled with step 10 BPM every 8 measures
+    And   the BPM is 120
+    And   the metronome is stopped
+    When  8 measures worth of time elapses
+    Then  the BPM readout should still show "♩ = 120 BPM"
+
+  @ft:17
+  Scenario: Default tempo-training step size
+    Then  the tempo training line should read "Tempo Training: off, step 10 bpm / 8 measures"
+
+  @ft:18
+  Scenario: Increase the tempo-training step size
+    Given the tempo-training step is 2 BPM
+    When  I press "]"
+    Then  the tempo training line should show a step of 3 bpm
+
+  @ft:19
+  Scenario: Decrease the tempo-training step size
+    Given the tempo-training step is 2 BPM
+    When  I press "["
+    Then  the tempo training line should show a step of 1 bpm
+
+  @ft:20
+  Scenario: Tempo-training step size cannot go below the minimum
+    Given the tempo-training step is 1 BPM
+    When  I press "["
+    Then  the tempo training line should show a step of 1 bpm
+
+  @ft:21
+  Scenario: Tempo-training step size cannot go above the maximum
+    Given the tempo-training step is 20 BPM
+    When  I press "]"
+    Then  the tempo training line should show a step of 20 bpm
+
+  @ft:22
+  Scenario: Adjusting the step size works while the metronome is stopped
+    Given the metronome is stopped
+    And   the tempo-training step is 2 BPM
+    When  I press "]"
+    Then  the tempo training line should show a step of 3 bpm
+
+  @ft:23
+  Scenario: Changed step size is used on the next tempo-training increase
+    Given tempo training is enabled with step 10 BPM every 8 measures
+    And   the BPM is 120
+    And   the metronome is playing
+    When  I press "]"
+    And   8 measures have elapsed
+    Then  the BPM readout should show "♩ = 131 BPM"
+
+  @ft:24
+  Scenario: Increase the tempo-training interval
+    Given the tempo-training interval is 8 measures
+    When  I press "}"
+    Then  the tempo training line should show an interval of 9 measures
+
+  @ft:25
+  Scenario: Decrease the tempo-training interval
+    Given the tempo-training interval is 8 measures
+    When  I press "{"
+    Then  the tempo training line should show an interval of 7 measures
+
+  @ft:26
+  Scenario: Tempo-training interval cannot go below the minimum
+    Given the tempo-training interval is 1 measure
+    When  I press "{"
+    Then  the tempo training line should show an interval of 1 measure
+
+  @ft:27
+  Scenario: Tempo-training interval cannot go above the maximum
+    Given the tempo-training interval is 32 measures
+    When  I press "}"
+    Then  the tempo training line should show an interval of 32 measures
+
+  @ft:28
+  Scenario: Adjusting the interval works while the metronome is stopped
+    Given the metronome is stopped
+    And   the tempo-training interval is 8 measures
+    When  I press "}"
+    Then  the tempo training line should show an interval of 9 measures
+
+  @ft:29
+  Scenario: Changed interval is used for the next tempo-training increase
+    Given tempo training is enabled with step 10 BPM every 8 measures
+    And   the BPM is 120
+    And   the metronome is playing
+    When  I press "}"
+    And   8 measures have elapsed
+    Then  the BPM readout should still show "♩ = 120 BPM"
+    When  1 more measure has elapsed
+    Then  the BPM readout should show "♩ = 130 BPM"

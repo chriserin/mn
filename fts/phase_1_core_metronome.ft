@@ -1,0 +1,86 @@
+Feature: Core metronome
+  As a musician using the metronome TUI
+  I want to control tempo and start/stop the beat
+  So that I can practice at a steady click
+
+  Background:
+    Given the metronome app has started
+
+  @ft:1
+  Scenario: Default BPM on startup
+    Then  the BPM readout should show "♩ = 120 BPM"
+    And   the status banner should show the stopped shape and the word "STOPPED"
+
+  @ft:2
+  Scenario: Start the metronome
+    When  I press "space"
+    Then  the status banner should show the playing shape and the word "PLAYING"
+
+  @ft:3
+  Scenario: Stop the metronome
+    Given the metronome is playing
+    When  I press "space"
+    Then  the status banner should show the stopped shape and the word "STOPPED"
+
+  @ft:4
+  Scenario: Increase BPM by a small increment
+    Given the BPM is 120
+    When  I press "up"
+    Then  the BPM readout should show "♩ = 121 BPM"
+
+  @ft:5
+  Scenario: Decrease BPM by a small increment
+    Given the BPM is 120
+    When  I press "down"
+    Then  the BPM readout should show "♩ = 119 BPM"
+
+  @ft:6
+  Scenario: Increase BPM by a large increment
+    Given the BPM is 120
+    When  I press "shift+up"
+    Then  the BPM readout should show "♩ = 130 BPM"
+
+  @ft:7
+  Scenario: Decrease BPM by a large increment
+    Given the BPM is 120
+    When  I press "shift+down"
+    Then  the BPM readout should show "♩ = 110 BPM"
+
+  @ft:8
+  Scenario: BPM cannot go below the minimum
+    Given the BPM is 20
+    When  I press "down"
+    Then  the BPM readout should show "♩ = 20 BPM"
+
+  @ft:9
+  Scenario: BPM cannot go above the maximum
+    Given the BPM is 300
+    When  I press "up"
+    Then  the BPM readout should show "♩ = 300 BPM"
+
+  @ft:10
+  Scenario: Beat pulse visualization advances on each beat and wraps after beat 4
+    Given the BPM is 120
+    And   the metronome is playing
+    When  beat 1 of the measure is struck
+    Then  only the beat 1 dot should be lit
+    And   beat slots 2, 3, and 4 should be unlit
+    When  beat 2 is struck
+    Then  only the beat 2 dot should be lit
+    And   the beat 1 dot should return to its unlit state
+    When  beat 3 is struck
+    Then  only the beat 3 dot should be lit
+    When  beat 4 is struck
+    Then  only the beat 4 dot should be lit
+    And   beat slots 1, 2, and 3 should be unlit
+    When  the next beat is struck
+    Then  the lit dot should jump back to beat 1, not advance to a fifth slot
+
+  @ft:11
+  Scenario: Beat 1 of each measure is visually accented
+    Given the BPM is 120
+    And   the metronome is playing
+    When  a new measure begins
+    Then  a "^" caret should be shown above beat 1's dot
+    And   beat 1's dot should pulse in the accent color when struck
+    And   beats 2 through 4 should show no caret and pulse in the plain color when struck
