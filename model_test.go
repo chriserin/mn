@@ -20,6 +20,17 @@ func key(name string) tea.KeyPressMsg {
 		return tea.KeyPressMsg{Code: tea.KeyUp, Mod: tea.ModShift}
 	case "shift+down":
 		return tea.KeyPressMsg{Code: tea.KeyDown, Mod: tea.ModShift}
+	case "t", "n", "m", "j", "k", "[", "]", "{", "}":
+		r := rune(name[0])
+		return tea.KeyPressMsg{Code: r, Text: name}
+	case "shift+n":
+		return tea.KeyPressMsg{Code: 'N', Text: "N", Mod: tea.ModShift}
+	case "shift+m":
+		return tea.KeyPressMsg{Code: 'M', Text: "M", Mod: tea.ModShift}
+	case "shift+j":
+		return tea.KeyPressMsg{Code: 'J', Text: "J", Mod: tea.ModShift}
+	case "shift+k":
+		return tea.KeyPressMsg{Code: 'K', Text: "K", Mod: tea.ModShift}
 	}
 	panic("test helper: unknown key " + name)
 }
@@ -230,4 +241,44 @@ func TestBeat1IsVisuallyAccented(t *testing.T) {
 	if !strings.Contains(viewAfterBeat1, "^") {
 		t.Errorf("expected the beat-1 caret to remain visible while beat 1 is struck, got:\n%s", viewAfterBeat1)
 	}
+}
+
+// @ft:49
+func TestJMirrorsDownForBPM(t *testing.T) {
+	m := New()
+	m.bpm = 120
+
+	m = press(m, "j")
+
+	assertBPM(t, m, 119)
+}
+
+// @ft:50
+func TestKMirrorsUpForBPM(t *testing.T) {
+	m := New()
+	m.bpm = 120
+
+	m = press(m, "k")
+
+	assertBPM(t, m, 121)
+}
+
+// @ft:51
+func TestShiftJMirrorsShiftDownForBPM(t *testing.T) {
+	m := New()
+	m.bpm = 120
+
+	m = press(m, "shift+j")
+
+	assertBPM(t, m, 110)
+}
+
+// @ft:52
+func TestShiftKMirrorsShiftUpForBPM(t *testing.T) {
+	m := New()
+	m.bpm = 120
+
+	m = press(m, "shift+k")
+
+	assertBPM(t, m, 130)
 }

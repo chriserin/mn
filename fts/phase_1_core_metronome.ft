@@ -84,3 +84,28 @@ Feature: Core metronome
     Then  a "^" caret should be shown above beat 1's dot
     And   beat 1's dot should pulse in the accent color when struck
     And   beats 2 through 4 should show no caret and pulse in the plain color when struck
+
+  @ft:49
+  Scenario: j mirrors the down key for BPM
+    Given the BPM is 120
+    When  I press "j"
+    Then  the BPM readout should show "♩ = 119 BPM"
+
+  @ft:50
+  Scenario: k mirrors the up key for BPM
+    Given the BPM is 120
+    When  I press "k"
+    Then  the BPM readout should show "♩ = 121 BPM"
+
+  @ft:51
+  Scenario: shift+j mirrors the shift+down key for BPM
+    Given the BPM is 120
+    When  I press "shift+j"
+    Then  the BPM readout should show "♩ = 110 BPM"
+
+  @ft:52
+  Scenario: shift+k mirrors the shift+up key for BPM
+    Given the BPM is 120
+    When  I press "shift+k"
+    Then  the BPM readout should show "♩ = 130 BPM"
+
