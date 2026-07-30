@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"image/color"
 	"strings"
 	"time"
 
@@ -32,6 +33,36 @@ var (
 	dimStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
 )
 
+// Status bar colors, powerline-style. Each segment is a solid color block;
+// the arrow between two segments is drawn in the outgoing segment's
+// background color so it reads as a seamless wedge rather than a gap.
+//
+// Colors are the 4-bit ANSI palette (0-15), not fixed 256-color/hex values,
+// so they render using whatever colors the user's terminal theme assigns to
+// each slot rather than a fixed set that can clash with it.
+// See design/07-status-bar.md.
+var (
+	statusBarBg = lipgloss.Black // fill between the left and right segment groups
+
+	playingBg = lipgloss.Green
+	stoppedBg = lipgloss.Red
+	modeFg    = lipgloss.Black
+
+	appSegBg = lipgloss.BrightBlack
+	appSegFg = lipgloss.White
+
+	counterSegBg = lipgloss.Blue
+	counterSegFg = lipgloss.White
+)
+
+// Right-angle triangle wedges (Unicode Geometric Shapes block), not the
+// Nerd Font powerline arrows, so the bar renders correctly without a
+// patched font.
+const (
+	powerlineRight = "◥" // trails left-aligned segments, pointing right
+	powerlineLeft  = "◤" // leads right-aligned segments, pointing left
+)
+
 // appName is shown at the start of the status bar. See design/07-status-bar.md.
 const appName = "mn"
 
@@ -46,6 +77,7 @@ type Model struct {
 	bpm         int
 	playing     bool
 	currentBeat int // 0 = no beat struck yet; otherwise 1..beatsPerMeasure
+	width       int // terminal width, used to stretch the status bar edge to edge
 
 	tempoTrainingOn      bool
 	stepBPM              int
@@ -89,6 +121,9 @@ func tickCmd(bpm int) tea.Cmd {
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		return m, nil
 	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "ctrl+c", "q":
@@ -216,22 +251,68 @@ func (m Model) playingStatus() string {
 	return "STOPPED"
 }
 
-// renderStatusBar renders the one-line status bar: app name, playing
-// status, and (while tempo training is on) a 1-based measure counter
-// showing progress toward the next step. See design/07-status-bar.md.
-func (m Model) renderStatusBar() string {
-	parts := []string{appName, m.playingStatus()}
-	if m.tempoTrainingOn {
-		// A measure completing (beat 4) bumps measuresSinceStep right away so
-		// the interval threshold can be checked, but the displayed count
-		// shouldn't advance until beat 1 of the next measure actually lands.
-		display := m.measuresSinceStep + 1
-		if m.currentBeat == beatsPerMeasure {
-			display = m.measuresSinceStep
-		}
-		parts = append(parts, fmt.Sprintf("%d/%d", min(display, m.stepIntervalMeasures), m.stepIntervalMeasures))
+// statusSegment renders one powerline block: padded text on a solid
+// background, followed by a wedge in that same background color (so it
+// bleeds into whatever comes next). dir controls which side the wedge is
+// drawn on and which glyph is used, so the same helper builds both the
+// left-aligned and right-aligned segment groups.
+type wedgeDir int
+
+const (
+	wedgeAfter  wedgeDir = iota // left-hand group: text, then a right-pointing wedge
+	wedgeBefore                 // right-hand group: a left-pointing wedge, then text
+)
+
+func statusSegment(text string, bg, fg color.Color, dir wedgeDir) string {
+	block := lipgloss.NewStyle().Background(bg).Foreground(fg).Padding(0, 1).Render(text)
+	// The wedge takes the segment's own color as its background, not its
+	// foreground, so it renders as a solid-colored triangle (matching the
+	// block it belongs to) rather than a colored glyph on the terminal's
+	// default background.
+	if dir == wedgeAfter {
+		wedgeStyle := lipgloss.NewStyle().Background(bg).Foreground(statusBarBg)
+		return wedgeStyle.Reverse(true).Render(powerlineRight) + block + wedgeStyle.Render(powerlineRight)
+	} else {
+		wedgeStyle := lipgloss.NewStyle().Background(bg).Foreground(statusBarBg)
+		return wedgeStyle.Reverse(false).Render(powerlineLeft) + block + wedgeStyle.Reverse(true).Render(powerlineLeft)
 	}
-	return strings.Join(parts, "  ·  ")
+}
+
+// renderStatusBar renders a vim-airline-style status bar spanning the full
+// terminal width: a colored mode block (PLAYING/STOPPED) and app-name block
+// on the left, a measure counter block pinned to the right edge (while
+// tempo training is on), and the bar's background color filling the gap
+// between them. See design/07-status-bar.md.
+func (m Model) renderStatusBar() string {
+	modeBg := stoppedBg
+	if m.playing {
+		modeBg = playingBg
+	}
+
+	left := statusSegment(m.playingStatus(), modeBg, modeFg, wedgeAfter) +
+		statusSegment(appName, appSegBg, appSegFg, wedgeAfter)
+
+	right := ""
+	if m.tempoTrainingOn {
+		right = statusSegment(m.measureCounterText(), appSegBg, counterSegFg, wedgeBefore)
+	}
+
+	fillWidth := max(m.width-lipgloss.Width(left)-lipgloss.Width(right), 0)
+	fill := lipgloss.NewStyle().Background(statusBarBg).Render(strings.Repeat(" ", fillWidth))
+
+	return left + fill + right
+}
+
+// measureCounterText returns the "N/M" measure counter shown while tempo
+// training is on. A measure completing (beat 4) bumps measuresSinceStep
+// right away so the interval threshold can be checked, but the displayed
+// count shouldn't advance until beat 1 of the next measure actually lands.
+func (m Model) measureCounterText() string {
+	display := m.measuresSinceStep + 1
+	if m.currentBeat == beatsPerMeasure {
+		display = m.measuresSinceStep
+	}
+	return fmt.Sprintf("%d/%d", min(display, m.stepIntervalMeasures), m.stepIntervalMeasures)
 }
 
 // beatDotStyled renders the dot for beat slot i (1-indexed), applying the

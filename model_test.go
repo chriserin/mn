@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 )
 
 func key(name string) tea.KeyPressMsg {
@@ -44,9 +45,12 @@ func bpmLine(bpm int) string {
 	return fmt.Sprintf("♩ = %d BPM", bpm)
 }
 
+// assertStatusBar compares the status bar with its ANSI styling stripped,
+// since the powerline segments are colored (see design/07-status-bar.md)
+// and tests only need to assert on the visible text and wedge glyphs.
 func assertStatusBar(t *testing.T, m Model, want string) {
 	t.Helper()
-	got := m.renderStatusBar()
+	got := ansi.Strip(m.renderStatusBar())
 	if got != want {
 		t.Errorf("expected status bar %q, got %q", want, got)
 	}
@@ -60,7 +64,7 @@ func TestDefaultBPMOnStartup(t *testing.T) {
 	if !strings.Contains(view, bpmLine(120)) {
 		t.Errorf("expected BPM readout %q, got:\n%s", bpmLine(120), view)
 	}
-	assertStatusBar(t, m, "mn  ·  STOPPED")
+	assertStatusBar(t, m, "◥ STOPPED ◥◥ mn ◥")
 }
 
 // @ft:2
@@ -68,7 +72,7 @@ func TestStartTheMetronome(t *testing.T) {
 	m := New()
 	m = press(m, "space")
 
-	assertStatusBar(t, m, "mn  ·  PLAYING")
+	assertStatusBar(t, m, "◥ PLAYING ◥◥ mn ◥")
 }
 
 // @ft:3
@@ -78,7 +82,7 @@ func TestStopTheMetronome(t *testing.T) {
 
 	m = press(m, "space")
 
-	assertStatusBar(t, m, "mn  ·  STOPPED")
+	assertStatusBar(t, m, "◥ STOPPED ◥◥ mn ◥")
 }
 
 // @ft:4

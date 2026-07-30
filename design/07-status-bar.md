@@ -6,22 +6,52 @@ Those documents are kept for history but no longer reflect the design.
 
 ## Layout
 
-A single-line status bar at the top of the screen, replacing the banner
-entirely:
+A single-line status bar at the top of the screen, styled like a vim
+statusline plugin (airline/powerline): solid-color segments joined by
+right-angle triangle wedge glyphs (`◥`/`◤`, Unicode Geometric Shapes block —
+not the Nerd Font powerline arrows, so no patched font is required),
+spanning the full terminal width. The left-hand segments are pinned to the
+left edge, the measure-counter segment (when present) is pinned to the
+right edge, and the gap between them is filled with the bar's background
+color.
 
 ```
-mn  ·  PLAYING  ·  3/8
+ PLAYING ◥ mn ◥                                                 ◤ 3/8 
 ```
 
-Three fields, separated by `·`:
+Segments, left to right:
 
-1. **App name** — `mn`, matching the Go module/binary name.
-2. **Playing status** — `PLAYING` / `STOPPED`, plain text (no shape/lettering
-   graphic this time — the banner's job of being "prominent" is instead
-   handled by the status bar's fixed position at the top of the screen).
-3. **Measure counter** — `x/8` (current measures elapsed / `stepIntervalMeasures`)
-   for tempo training. Only shown while tempo training is on; omitted
-   entirely (falls back to just `mn  ·  PLAYING`) while training is off.
+1. **Mode segment** — `PLAYING` / `STOPPED`, colored background (green while
+   playing, red while stopped) so play state is readable at a glance without
+   parsing text. Replaces the old plain-text playing-status field.
+2. **App segment** — `mn`, matching the Go module/binary name, neutral gray
+   background.
+3. **Measure counter segment** (right edge) — `x/8` (current measure number
+   out of `stepIntervalMeasures`) for tempo training, blue background. Only
+   shown while tempo training is on; omitted entirely while training is off,
+   in which case the bar's background fill runs all the way to the right
+   edge.
+
+Each segment is `Padding(0, 1)` (one space of breathing room on either
+side) followed by a wedge rendered in that segment's own background color,
+so the wedge reads as a seamless color transition into whatever comes next
+(standard powerline technique). The left-hand group trails each segment
+with `◥`; the right-edge segment leads with the mirror-image `◤`, since
+it's approached from the opposite direction.
+
+The bar requires the terminal width (via `tea.WindowSizeMsg`) to compute the
+fill; `Model.width` is 0 until the first resize message arrives, in which
+case the bar renders tight (no fill) rather than guessing a width.
+
+## Colors
+
+Segment backgrounds use the 4-bit ANSI palette (`lipgloss.Green`, `.Red`,
+`.Blue`, `.BrightBlack`, `.Black`, values 0-15) rather than fixed 256-color
+or hex values. These render as the basic SGR color codes (30-37/40-47,
+90-97/100-107), which terminal emulators map to whatever colors the user's
+own theme assigns to "green", "red", etc. — so the bar picks up the user's
+terminal color scheme instead of imposing a fixed palette that might clash
+with it.
 
 ## Measure counter semantics
 
@@ -58,24 +88,24 @@ Example sequence with `stepIntervalMeasures = 8`, tempo training on:
 
 ## States
 
-Stopped, training off:
+Stopped, training off (red mode segment, no counter, fill runs to the edge):
 ```
-mn  ·  STOPPED
-```
-
-Playing, training off:
-```
-mn  ·  PLAYING
+ STOPPED ◥ mn ◥                                                       
 ```
 
-Playing, training on, mid-interval:
+Playing, training off (green mode segment):
 ```
-mn  ·  PLAYING  ·  3/8
+ PLAYING ◥ mn ◥                                                       
+```
+
+Playing, training on, mid-interval (blue counter segment pinned right):
+```
+ PLAYING ◥ mn ◥                                                 ◤ 3/8 
 ```
 
 Stopped, training on (counter resets when playback stops):
 ```
-mn  ·  STOPPED  ·  1/8
+ STOPPED ◥ mn ◥                                                 ◤ 1/8 
 ```
 
 ## What's removed
@@ -85,6 +115,8 @@ mn  ·  STOPPED  ·  1/8
 - The 3-row banner and its fixed-height layout-stability concerns — no
   longer relevant since the status bar is always exactly one line
   regardless of state.
+- The plain-text `mn  ·  PLAYING  ·  3/8` layout from the first status-bar
+  pass, replaced by the colored powerline segments above.
 
 The separate "Tempo Training: on/off/target reached (N bpm)" header and the
 Start/Step/Interval/Target table (`design/06-tempo-training-table.md`

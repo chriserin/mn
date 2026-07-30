@@ -394,27 +394,28 @@ Feature: Tempo training
 
   @ft:63
   Scenario: Measure counter is hidden when tempo training is off
-    Then  the status bar should read "mn  ·  STOPPED"
+    Then  the status bar should show "STOPPED"
+    And   the status bar should not show a measure counter
 
   @ft:64
   Scenario: Measure counter appears in the status bar once tempo training is on
     Given tempo training is enabled with step 10 BPM every 8 measures
     And   the metronome is playing
-    Then  the status bar should read "mn  ·  PLAYING  ·  1/8"
+    Then  the status bar should show a measure counter of "1/8"
 
   @ft:65
   Scenario: Measure counter increments as measures complete
     Given tempo training is enabled with step 10 BPM every 8 measures
     And   the metronome is playing
     When  3 measures have elapsed
-    Then  the status bar should read "mn  ·  PLAYING  ·  3/8"
+    Then  the status bar should show a measure counter of "3/8"
 
   @ft:66
   Scenario: Measure counter holds at the interval value between beat 4 and beat 1
     Given tempo training is enabled with step 10 BPM every 8 measures
     And   the metronome is playing
     When  8 measures have elapsed
-    Then  the status bar should read "mn  ·  PLAYING  ·  8/8"
+    Then  the status bar should show a measure counter of "8/8"
 
   @ft:67
   Scenario: Measure counter resets once the pending step lands on beat 1
@@ -422,7 +423,7 @@ Feature: Tempo training
     And   the metronome is playing
     When  8 measures have elapsed
     And   beat 1 of the next measure is struck
-    Then  the status bar should read "mn  ·  PLAYING  ·  1/8"
+    Then  the status bar should show a measure counter of "1/8"
 
   @ft:68
   Scenario: Measure counter resets when the metronome stops
@@ -430,13 +431,13 @@ Feature: Tempo training
     And   the metronome is playing
     When  3 measures have elapsed
     And   I press "space"
-    Then  the status bar should read "mn  ·  STOPPED  ·  1/8"
+    Then  the status bar should show a measure counter of "1/8"
 
   @ft:72
   Scenario: Measure counter does not advance until beat 1 of the next measure
     Given tempo training is enabled with step 10 BPM every 8 measures
     And   the metronome is playing
     When  1 measure has elapsed
-    Then  the status bar should read "mn  ·  PLAYING  ·  1/8"
+    Then  the status bar should show a measure counter of "1/8"
     When  beat 1 of the next measure is struck
-    Then  the status bar should read "mn  ·  PLAYING  ·  2/8"
+    Then  the status bar should show a measure counter of "2/8"

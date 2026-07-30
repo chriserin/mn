@@ -9,18 +9,19 @@ Feature: Core metronome
   @ft:1
   Scenario: Default BPM on startup
     Then  the BPM readout should show "♩ = 120 BPM"
-    And   the status bar should read "mn  ·  STOPPED"
+    And   the status bar should show "STOPPED"
+    And   the status bar should show the app name "mn"
 
   @ft:2
   Scenario: Start the metronome
     When  I press "space"
-    Then  the status bar should read "mn  ·  PLAYING"
+    Then  the status bar should show "PLAYING"
 
   @ft:3
   Scenario: Stop the metronome
     Given the metronome is playing
     When  I press "space"
-    Then  the status bar should read "mn  ·  STOPPED"
+    Then  the status bar should show "STOPPED"
 
   @ft:4
   Scenario: Increase BPM by a small increment

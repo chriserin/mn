@@ -674,7 +674,7 @@ func TestTempoTrainingHeaderAlwaysShownEvenWhileOff(t *testing.T) {
 func TestMeasureCounterHiddenWhenTempoTrainingOff(t *testing.T) {
 	m := New()
 
-	assertStatusBar(t, m, "mn  ·  STOPPED")
+	assertStatusBar(t, m, "◥ STOPPED ◥◥ mn ◥")
 }
 
 // @ft:64
@@ -685,7 +685,7 @@ func TestMeasureCounterAppearsOnceTempoTrainingOn(t *testing.T) {
 	m.stepIntervalMeasures = 8
 	m.playing = true
 
-	assertStatusBar(t, m, "mn  ·  PLAYING  ·  1/8")
+	assertStatusBar(t, m, "◥ PLAYING ◥◥ mn ◥◤ 1/8 ◤")
 }
 
 // @ft:65
@@ -698,7 +698,7 @@ func TestMeasureCounterIncrementsAsMeasuresComplete(t *testing.T) {
 
 	m = elapseMeasures(m, 3)
 
-	assertStatusBar(t, m, "mn  ·  PLAYING  ·  3/8")
+	assertStatusBar(t, m, "◥ PLAYING ◥◥ mn ◥◤ 3/8 ◤")
 }
 
 // @ft:66
@@ -711,7 +711,7 @@ func TestMeasureCounterHoldsAtIntervalBetweenBeatFourAndBeatOne(t *testing.T) {
 
 	m = elapseMeasures(m, 8)
 
-	assertStatusBar(t, m, "mn  ·  PLAYING  ·  8/8")
+	assertStatusBar(t, m, "◥ PLAYING ◥◥ mn ◥◤ 8/8 ◤")
 }
 
 // @ft:72
@@ -723,10 +723,10 @@ func TestMeasureCounterDoesNotAdvanceUntilBeatOne(t *testing.T) {
 	m.playing = true
 
 	m = elapseMeasures(m, 1)
-	assertStatusBar(t, m, "mn  ·  PLAYING  ·  1/8")
+	assertStatusBar(t, m, "◥ PLAYING ◥◥ mn ◥◤ 1/8 ◤")
 
 	m = elapseBeats(m, 1)
-	assertStatusBar(t, m, "mn  ·  PLAYING  ·  2/8")
+	assertStatusBar(t, m, "◥ PLAYING ◥◥ mn ◥◤ 2/8 ◤")
 }
 
 // @ft:67
@@ -739,7 +739,7 @@ func TestMeasureCounterResetsOncePendingStepLands(t *testing.T) {
 
 	m = elapseMeasuresThenLand(m, 8)
 
-	assertStatusBar(t, m, "mn  ·  PLAYING  ·  1/8")
+	assertStatusBar(t, m, "◥ PLAYING ◥◥ mn ◥◤ 1/8 ◤")
 }
 
 // @ft:68
@@ -753,5 +753,5 @@ func TestMeasureCounterResetsOnStop(t *testing.T) {
 	m = elapseMeasures(m, 3)
 	m = press(m, "space")
 
-	assertStatusBar(t, m, "mn  ·  STOPPED  ·  1/8")
+	assertStatusBar(t, m, "◥ STOPPED ◥◥ mn ◥◤ 1/8 ◤")
 }
