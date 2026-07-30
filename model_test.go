@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 
@@ -42,7 +41,7 @@ func press(m Model, keyName string) Model {
 }
 
 func bpmLine(bpm int) string {
-	return fmt.Sprintf("♩ = %d BPM", bpm)
+	return renderBigNumber(bpm)
 }
 
 // assertStatusBar compares the status bar with its ANSI styling stripped,
@@ -64,7 +63,17 @@ func TestDefaultBPMOnStartup(t *testing.T) {
 	if !strings.Contains(view, bpmLine(120)) {
 		t.Errorf("expected BPM readout %q, got:\n%s", bpmLine(120), view)
 	}
-	assertStatusBar(t, m, "◥ STOPPED ◥◥ mn ◥")
+	assertStatusBar(t, m, "◥ STOPPED ◥◥ mn ◥◥ ♩ 120 bpm ◥")
+}
+
+// @ft:74
+func TestStatusBarTempoIndicatorTracksBPM(t *testing.T) {
+	m := New()
+	m.bpm = 120
+
+	m = press(m, "up")
+
+	assertStatusBar(t, m, "◥ STOPPED ◥◥ mn ◥◥ ♩ 121 bpm ◥")
 }
 
 // @ft:2
@@ -72,7 +81,7 @@ func TestStartTheMetronome(t *testing.T) {
 	m := New()
 	m = press(m, "space")
 
-	assertStatusBar(t, m, "◥ PLAYING ◥◥ mn ◥")
+	assertStatusBar(t, m, "◥ PLAYING ◥◥ mn ◥◥ ♩ 120 bpm ◥")
 }
 
 // @ft:73
@@ -93,7 +102,7 @@ func TestStopTheMetronome(t *testing.T) {
 
 	m = press(m, "space")
 
-	assertStatusBar(t, m, "◥ STOPPED ◥◥ mn ◥")
+	assertStatusBar(t, m, "◥ STOPPED ◥◥ mn ◥◥ ♩ 120 bpm ◥")
 }
 
 // @ft:4

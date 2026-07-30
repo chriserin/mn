@@ -51,6 +51,9 @@ var (
 	appSegBg = lipgloss.BrightBlack
 	appSegFg = lipgloss.White
 
+	tempoSegBg = lipgloss.Cyan
+	tempoSegFg = lipgloss.Black
+
 	counterSegBg = lipgloss.Blue
 	counterSegFg = lipgloss.White
 )
@@ -233,7 +236,7 @@ func (m Model) View() tea.View {
 	lines := []string{
 		m.renderStatusBar(),
 		"",
-		fmt.Sprintf("♩ = %d BPM", m.bpm),
+		renderBigNumber(m.bpm),
 		"",
 		m.renderBeats(),
 		"",
@@ -282,11 +285,18 @@ func statusSegment(text string, bg, fg color.Color, dir wedgeDir) string {
 	}
 }
 
+// tempoIndicatorText returns the current-tempo readout shown in the middle
+// of the status bar, e.g. "♩ 120 bpm".
+func (m Model) tempoIndicatorText() string {
+	return fmt.Sprintf("♩ %d bpm", m.bpm)
+}
+
 // renderStatusBar renders a vim-airline-style status bar spanning the full
 // terminal width: a colored mode block (PLAYING/STOPPED) and app-name block
-// on the left, a measure counter block pinned to the right edge (while
-// tempo training is on), and the bar's background color filling the gap
-// between them. See design/07-status-bar.md.
+// on the left, the current-tempo readout centered in the middle, and a
+// measure counter block pinned to the right edge (while tempo training is
+// on). The bar's background color fills the remaining gaps. See
+// design/07-status-bar.md.
 func (m Model) renderStatusBar() string {
 	modeBg := stoppedBg
 	if m.playing {
@@ -296,15 +306,27 @@ func (m Model) renderStatusBar() string {
 	left := statusSegment(m.playingStatus(), modeBg, modeFg, wedgeAfter) +
 		statusSegment(appName, appSegBg, appSegFg, wedgeAfter)
 
+	middle := statusSegment(m.tempoIndicatorText(), tempoSegBg, tempoSegFg, wedgeAfter)
+
 	right := ""
 	if m.tempoTrainingOn {
 		right = statusSegment(m.measureCounterText(), appSegBg, counterSegFg, wedgeBefore)
 	}
 
-	fillWidth := max(m.width-lipgloss.Width(left)-lipgloss.Width(right), 0)
-	fill := lipgloss.NewStyle().Background(statusBarBg).Render(strings.Repeat(" ", fillWidth))
+	leftW, middleW, rightW := lipgloss.Width(left), lipgloss.Width(middle), lipgloss.Width(right)
 
-	return left + fill + right
+	// Center the middle segment across the full bar width, but never let it
+	// creep left of where the left group ends.
+	middleStart := max((m.width-middleW)/2, leftW)
+	fillBefore := max(middleStart-leftW, 0)
+	fillAfter := max(m.width-leftW-fillBefore-middleW-rightW, 0)
+
+	fillStyle := lipgloss.NewStyle().Background(statusBarBg)
+	return left +
+		fillStyle.Render(strings.Repeat(" ", fillBefore)) +
+		middle +
+		fillStyle.Render(strings.Repeat(" ", fillAfter)) +
+		right
 }
 
 // measureCounterText returns the "N/M" measure counter shown while tempo

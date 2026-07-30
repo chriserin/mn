@@ -16,28 +16,35 @@ right edge, and the gap between them is filled with the bar's background
 color.
 
 ```
- PLAYING ◥ mn ◥                                                 ◤ 3/8 
+ PLAYING  mn                    ♩ 120 bpm                        3/8 
 ```
 
-Segments, left to right:
+Segments:
 
-1. **Mode segment** — `PLAYING` / `STOPPED`, colored background (green while
-   playing, red while stopped) so play state is readable at a glance without
-   parsing text. Replaces the old plain-text playing-status field.
-2. **App segment** — `mn`, matching the Go module/binary name, neutral gray
-   background.
-3. **Measure counter segment** (right edge) — `x/8` (current measure number
+1. **Mode segment** (left edge) — `PLAYING` / `STOPPED`, colored background
+   (green while playing, red while stopped) so play state is readable at a
+   glance without parsing text. Replaces the old plain-text playing-status
+   field.
+2. **App segment** (left, after mode) — `mn`, matching the Go module/binary
+   name, neutral gray background.
+3. **Tempo segment** (centered) — `♩ N bpm`, the current BPM, cyan
+   background. Always shown, centered across the full bar width (but never
+   left of where the app segment ends). This is the status bar's copy of the
+   tempo; the body's big ASCII-art digits (see "Big-digit tempo display"
+   below) are the primary readout.
+4. **Measure counter segment** (right edge) — `x/8` (current measure number
    out of `stepIntervalMeasures`) for tempo training, blue background. Only
    shown while tempo training is on; omitted entirely while training is off,
    in which case the bar's background fill runs all the way to the right
    edge.
 
 Each segment is `Padding(0, 1)` (one space of breathing room on either
-side) followed by a wedge rendered in that segment's own background color,
-so the wedge reads as a seamless color transition into whatever comes next
-(standard powerline technique). The left-hand group trails each segment
-with `◥`; the right-edge segment leads with the mirror-image `◤`, since
-it's approached from the opposite direction.
+side) flanked by a wedge on both sides, rendered in that segment's own
+background color so it reads as a solid-colored triangle rather than a
+colored glyph on the terminal's default background (standard powerline
+technique). Left-aligned segments (mode, app) and the centered tempo
+segment use `◥`; the right-edge measure-counter segment uses the
+mirror-image `◤`, since it's approached from the opposite direction.
 
 The bar requires the terminal width (via `tea.WindowSizeMsg`) to compute the
 fill; `Model.width` is 0 until the first resize message arrives, in which
@@ -88,24 +95,24 @@ Example sequence with `stepIntervalMeasures = 8`, tempo training on:
 
 ## States
 
-Stopped, training off (red mode segment, no counter, fill runs to the edge):
+Stopped, training off (red mode segment, tempo segment centered, no counter):
 ```
- STOPPED ◥ mn ◥                                                       
+ STOPPED  mn                    ♩ 120 bpm                            
 ```
 
 Playing, training off (green mode segment):
 ```
- PLAYING ◥ mn ◥                                                       
+ PLAYING  mn                    ♩ 120 bpm                            
 ```
 
 Playing, training on, mid-interval (blue counter segment pinned right):
 ```
- PLAYING ◥ mn ◥                                                 ◤ 3/8 
+ PLAYING  mn                    ♩ 120 bpm                        3/8 
 ```
 
 Stopped, training on (counter resets when playback stops):
 ```
- STOPPED ◥ mn ◥                                                 ◤ 1/8 
+ STOPPED  mn                    ♩ 120 bpm                        1/8 
 ```
 
 ## What's removed
@@ -121,3 +128,24 @@ Stopped, training on (counter resets when playback stops):
 The separate "Tempo Training: on/off/target reached (N bpm)" header and the
 Start/Step/Interval/Target table (`design/06-tempo-training-table.md`
 option E) are unchanged and still rendered below the beat display.
+
+## Big-digit tempo display
+
+The body's plain `♩ = 120 BPM` line is replaced by the BPM rendered as
+large ASCII-art digits, in figlet's "big" font:
+
+```
+ __   ___     ___
+/_ | |__ \   / _ \
+ | |    ) | | | | |
+ | |   / /  | | | |
+ | |  / /_  | |_| |
+ |_| |____|  \___/
+```
+
+Each digit (0-9) is a hardcoded 6-row glyph (`bigDigitGlyphs` in
+`bigdigits.go`), captured once via `figlet -f big -w 200 <digit>` and baked
+into source — the app doesn't shell out to figlet at runtime. Multi-digit
+numbers are composited by concatenating each digit's glyph rows with a
+single-space gap between digits; this is simpler than figlet's own
+character-kerning ("smushing") and doesn't attempt to replicate it.

@@ -11,6 +11,13 @@ Feature: Core metronome
     Then  the BPM readout should show "♩ = 120 BPM"
     And   the status bar should show "STOPPED"
     And   the status bar should show the app name "mn"
+    And   the status bar should show the current tempo
+
+  @ft:74
+  Scenario: Status bar's tempo indicator tracks BPM changes
+    Given the BPM is 120
+    When  I press "up"
+    Then  the status bar's tempo indicator should show 121
 
   @ft:2
   Scenario: Start the metronome
