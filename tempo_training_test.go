@@ -52,7 +52,7 @@ func assertTableShown(t *testing.T, m Model, shown bool) {
 	}
 }
 
-// @ft:12
+// @ft:16
 func TestEnableTempoTraining(t *testing.T) {
 	m := New()
 	m.playing = true
@@ -64,9 +64,9 @@ func TestEnableTempoTraining(t *testing.T) {
 	assertTableShown(t, m, true)
 }
 
-// @ft:61
 // Measures that elapse before tempo training is turned on must not count
 // toward the first interval — otherwise the first step lands early.
+// @ft:61
 func TestMeasuresElapsedBeforeEnablingDoNotCountTowardFirstInterval(t *testing.T) {
 	m := New()
 	m.stepBPM = 10
@@ -85,9 +85,9 @@ func TestMeasuresElapsedBeforeEnablingDoNotCountTowardFirstInterval(t *testing.T
 	assertBPM(t, m, 130) // full 2 measures since enabling: now it steps
 }
 
-// @ft:62
 // Toggling training off mid-interval and back on must restart the count
 // from zero, not resume the stale partial count.
+// @ft:62
 func TestTogglingOffAndOnResetsTheInterval(t *testing.T) {
 	m := New()
 	m.tempoTrainingOn = true
@@ -108,7 +108,7 @@ func TestTogglingOffAndOnResetsTheInterval(t *testing.T) {
 	assertBPM(t, m, 130) // full 2 measures since re-enabling: now it steps
 }
 
-// @ft:13
+// @ft:19
 func TestDisableTempoTraining(t *testing.T) {
 	m := New()
 	m.tempoTrainingOn = true
@@ -119,7 +119,7 @@ func TestDisableTempoTraining(t *testing.T) {
 	assertTableShown(t, m, false)
 }
 
-// @ft:14
+// @ft:20
 func TestTempoTrainingIncreasesBPMAfterConfiguredMeasures(t *testing.T) {
 	m := New()
 	m.tempoTrainingOn = true
@@ -135,7 +135,7 @@ func TestTempoTrainingIncreasesBPMAfterConfiguredMeasures(t *testing.T) {
 	assertBPM(t, m, 130)
 }
 
-// @ft:15
+// @ft:22
 func TestTempoTrainingHoldsOnceTargetReached(t *testing.T) {
 	m := New()
 	m.tempoTrainingOn = true
@@ -152,9 +152,8 @@ func TestTempoTrainingHoldsOnceTargetReached(t *testing.T) {
 	assertBPM(t, m, 130)
 	assertHeader(t, m, "Tempo Training: target reached (130 bpm)")
 
-	view := m.View().Content
-	if !strings.Contains(view, letterPlaying[0]) {
-		t.Errorf("expected status banner to still show PLAYING, got:\n%s", view)
+	if m.playingStatus() != "PLAYING" {
+		t.Errorf("expected status bar to still show PLAYING, got %q", m.playingStatus())
 	}
 }
 
@@ -190,7 +189,7 @@ func TestIncreaseTempoTrainingStepSize(t *testing.T) {
 	assertRow(t, m, "Step", "3 bpm")
 }
 
-// @ft:19
+// @ft:26
 func TestDecreaseTempoTrainingStepSize(t *testing.T) {
 	m := New()
 	m.tempoTrainingOn = true
@@ -201,7 +200,7 @@ func TestDecreaseTempoTrainingStepSize(t *testing.T) {
 	assertRow(t, m, "Step", "1 bpm")
 }
 
-// @ft:20
+// @ft:27
 func TestTempoTrainingStepSizeCannotGoBelowMinimum(t *testing.T) {
 	m := New()
 	m.tempoTrainingOn = true
@@ -223,7 +222,7 @@ func TestTempoTrainingStepSizeCannotGoAboveMaximum(t *testing.T) {
 	assertRow(t, m, "Step", "20 bpm")
 }
 
-// @ft:22
+// @ft:29
 func TestAdjustingStepSizeWorksWhileStopped(t *testing.T) {
 	m := New()
 	m.tempoTrainingOn = true
@@ -272,7 +271,7 @@ func TestDecreaseTempoTrainingInterval(t *testing.T) {
 	assertRow(t, m, "Interval", "7 measures")
 }
 
-// @ft:26
+// @ft:33
 func TestTempoTrainingIntervalCannotGoBelowMinimum(t *testing.T) {
 	m := New()
 	m.tempoTrainingOn = true
@@ -283,7 +282,7 @@ func TestTempoTrainingIntervalCannotGoBelowMinimum(t *testing.T) {
 	assertRow(t, m, "Interval", "1 measure")
 }
 
-// @ft:27
+// @ft:34
 func TestTempoTrainingIntervalCannotGoAboveMaximum(t *testing.T) {
 	m := New()
 	m.tempoTrainingOn = true
@@ -306,7 +305,7 @@ func TestAdjustingIntervalWorksWhileStopped(t *testing.T) {
 	assertRow(t, m, "Interval", "9 measures")
 }
 
-// @ft:29
+// @ft:36
 func TestChangedIntervalUsedForNextIncrease(t *testing.T) {
 	m := New()
 	m.tempoTrainingOn = true
@@ -356,7 +355,7 @@ func TestTempoTrainingTargetCannotGoBelowMinimum(t *testing.T) {
 	assertRow(t, m, "Target", "20 bpm")
 }
 
-// @ft:33
+// @ft:40
 func TestTempoTrainingTargetCannotGoAboveMaximum(t *testing.T) {
 	m := New()
 	m.tempoTrainingOn = true
@@ -367,7 +366,7 @@ func TestTempoTrainingTargetCannotGoAboveMaximum(t *testing.T) {
 	assertRow(t, m, "Target", "300 bpm")
 }
 
-// @ft:34
+// @ft:41
 func TestAdjustingTargetWorksWhileStopped(t *testing.T) {
 	m := New()
 	m.tempoTrainingOn = true
@@ -438,7 +437,7 @@ func TestTempoTrainingStepsDownwardWhenTargetBelowCurrentBPM(t *testing.T) {
 	assertBPM(t, m, 120)
 }
 
-// @ft:36
+// @ft:69
 func TestTempoTrainingHoldsOnceSteppedDownToTarget(t *testing.T) {
 	m := New()
 	m.tempoTrainingOn = true
@@ -535,7 +534,7 @@ func TestStartRowCapturedAndHeldFixedOncePlaying(t *testing.T) {
 	assertRow(t, m, "Start", "120 bpm")
 }
 
-// @ft:40
+// @ft:54
 func TestStartRowStaysFixedWhileTempoTrainingSteps(t *testing.T) {
 	m := New()
 	m.tempoTrainingOn = true
@@ -550,7 +549,7 @@ func TestStartRowStaysFixedWhileTempoTrainingSteps(t *testing.T) {
 	assertRow(t, m, "Start", "120 bpm")
 }
 
-// @ft:41
+// @ft:55
 func TestStartRowRecapturedAfterStoppingAndRestarting(t *testing.T) {
 	m := New()
 	m.tempoTrainingOn = true
@@ -582,9 +581,8 @@ func TestBPMRevertsToStartWhenMetronomeStops(t *testing.T) {
 	m = press(m, "space")
 
 	assertBPM(t, m, 120)
-	view := m.View().Content
-	if !strings.Contains(view, letterStopped[0]) {
-		t.Errorf("expected status banner to show STOPPED, got:\n%s", view)
+	if m.playingStatus() != "STOPPED" {
+		t.Errorf("expected status bar to show STOPPED, got %q", m.playingStatus())
 	}
 }
 
@@ -604,13 +602,13 @@ func TestStartDoesNotRevertToDriftedBPMWhenMetronomeStops(t *testing.T) {
 	assertRow(t, m, "Start", "120 bpm")
 }
 
-// @ft:60
 // A tempo-training step lands on beat 4 (the last beat of the measure, the
 // natural "measure complete" signal), but must not take effect until beat 1
 // of the next measure: neither the BPM readout nor the tick interval that
 // follows beat 4 should change yet. Only once beat 1 lands should the BPM
 // readout update and the following tick be paced at the new tempo. Without
 // this, the tempo audibly/visually changes a beat early.
+// @ft:60
 func TestTempoChangeTakesEffectStartingAtBeatOneOfNextMeasure(t *testing.T) {
 	m := New()
 	m.tempoTrainingOn = true
@@ -639,14 +637,14 @@ func TestTempoChangeTakesEffectStartingAtBeatOneOfNextMeasure(t *testing.T) {
 	assertBPM(t, m, 130)
 }
 
-// @ft:54
+// @ft:70
 func TestTempoTrainingTableHiddenByDefault(t *testing.T) {
 	m := New()
 
 	assertTableShown(t, m, false)
 }
 
-// @ft:55
+// @ft:71
 func TestTempoTrainingTableAppearsWhenTurnedOn(t *testing.T) {
 	m := New()
 
@@ -670,4 +668,90 @@ func TestTempoTrainingHeaderAlwaysShownEvenWhileOff(t *testing.T) {
 	m := New()
 
 	assertHeader(t, m, "Tempo Training: off")
+}
+
+// @ft:63
+func TestMeasureCounterHiddenWhenTempoTrainingOff(t *testing.T) {
+	m := New()
+
+	assertStatusBar(t, m, "mn  ·  STOPPED")
+}
+
+// @ft:64
+func TestMeasureCounterAppearsOnceTempoTrainingOn(t *testing.T) {
+	m := New()
+	m.tempoTrainingOn = true
+	m.stepBPM = 10
+	m.stepIntervalMeasures = 8
+	m.playing = true
+
+	assertStatusBar(t, m, "mn  ·  PLAYING  ·  1/8")
+}
+
+// @ft:65
+func TestMeasureCounterIncrementsAsMeasuresComplete(t *testing.T) {
+	m := New()
+	m.tempoTrainingOn = true
+	m.stepBPM = 10
+	m.stepIntervalMeasures = 8
+	m.playing = true
+
+	m = elapseMeasures(m, 3)
+
+	assertStatusBar(t, m, "mn  ·  PLAYING  ·  3/8")
+}
+
+// @ft:66
+func TestMeasureCounterHoldsAtIntervalBetweenBeatFourAndBeatOne(t *testing.T) {
+	m := New()
+	m.tempoTrainingOn = true
+	m.stepBPM = 10
+	m.stepIntervalMeasures = 8
+	m.playing = true
+
+	m = elapseMeasures(m, 8)
+
+	assertStatusBar(t, m, "mn  ·  PLAYING  ·  8/8")
+}
+
+// @ft:72
+func TestMeasureCounterDoesNotAdvanceUntilBeatOne(t *testing.T) {
+	m := New()
+	m.tempoTrainingOn = true
+	m.stepBPM = 10
+	m.stepIntervalMeasures = 8
+	m.playing = true
+
+	m = elapseMeasures(m, 1)
+	assertStatusBar(t, m, "mn  ·  PLAYING  ·  1/8")
+
+	m = elapseBeats(m, 1)
+	assertStatusBar(t, m, "mn  ·  PLAYING  ·  2/8")
+}
+
+// @ft:67
+func TestMeasureCounterResetsOncePendingStepLands(t *testing.T) {
+	m := New()
+	m.tempoTrainingOn = true
+	m.stepBPM = 10
+	m.stepIntervalMeasures = 8
+	m.playing = true
+
+	m = elapseMeasuresThenLand(m, 8)
+
+	assertStatusBar(t, m, "mn  ·  PLAYING  ·  1/8")
+}
+
+// @ft:68
+func TestMeasureCounterResetsOnStop(t *testing.T) {
+	m := New()
+	m.tempoTrainingOn = true
+	m.stepBPM = 10
+	m.stepIntervalMeasures = 8
+	m.playing = true
+
+	m = elapseMeasures(m, 3)
+	m = press(m, "space")
+
+	assertStatusBar(t, m, "mn  ·  STOPPED  ·  1/8")
 }

@@ -1,5 +1,8 @@
 # Status Banner Variations
 
+> **Superseded:** the play/stop banner explored in this document was
+> removed in favor of a one-line status bar. See `07-status-bar.md`.
+
 Exploring options for a prominent play/stopped indicator, since the earlier
 plain "▸ stopped" caption was too quiet. Each variation shows both states so
 they can be compared side by side. Pick one (or mix elements) to fold back

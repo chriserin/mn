@@ -6,6 +6,7 @@ Baseline playable metronome. No tempo training, no audio, no persistence — tho
 
 - BPM state: adjustable tempo, default e.g. 120, clamped to a sane range (e.g. 20–300).
 - Start/stop control.
+- A one-line status bar at the top of the screen: app name (`mn`) and playing status (`PLAYING`/`STOPPED`). See `design/07-status-bar.md`.
 - Visual beat pulse driven by an accurate timing engine (recompute absolute next-beat time each tick to avoid drift), fixed at 4/4 time, with beat 1 rendered as a visual accent (distinct color/size, plus a color-agnostic caret) vs. beats 2-4.
 - Key bindings: start/stop, BPM up/down (small and large increments), quit.
 - All settings are in-memory only; every run starts from defaults.

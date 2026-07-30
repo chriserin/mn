@@ -32,35 +32,8 @@ var (
 	dimStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
 )
 
-// shapeStopped and shapePlaying are 3-row ASCII glyphs shown in the status
-// banner, aspect-ratio-corrected so a terminal cell (roughly 2x taller than
-// wide) still reads as a square/triangle. See design/03-status-banner-variations.md.
-var shapeStopped = [3]string{
-	"██████",
-	"██████",
-	"██████",
-}
-
-var shapePlaying = [3]string{
-	"██◥   ",
-	"██████",
-	"██◢   ",
-}
-
-// letterStopped and letterPlaying are figlet `mini` renderings of the words,
-// hardcoded so the app doesn't depend on the figlet binary at runtime. See
-// design/03-status-banner-variations.md variant K.
-var letterStopped = [3]string{
-	` ______  _  _  _ _`,
-	`(_  |/ \|_)|_)|_| \`,
-	`__) |\_/|  |  |_|_/`,
-}
-
-var letterPlaying = [3]string{
-	` _        ___     __`,
-	`|_)|  /\\_/| |\ |/__`,
-	`|  |_/--\|_|_| \|\_|`,
-}
+// appName is shown at the start of the status bar. See design/07-status-bar.md.
+const appName = "mn"
 
 // beatMsg is emitted once per beat by the timing engine. Recomputing the
 // next tick's duration from the current BPM each time (rather than using a
@@ -130,6 +103,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// letting Start mirror wherever BPM ended up.
 			m.bpm = m.startBPM
 			m.currentBeat = 0
+			m.measuresSinceStep = 0
+			m.pendingTempoStep = false
 			return m, nil
 		case "up", "k":
 			m.bpm = clamp(m.bpm+smallStep, minBPM, maxBPM)
@@ -189,11 +164,11 @@ func (m Model) advanceBeat() (Model, int) {
 		m.measuresSinceStep++
 		if m.measuresSinceStep >= m.stepIntervalMeasures {
 			m.pendingTempoStep = true
-			m.measuresSinceStep = 0
 		}
 	case m.currentBeat == 1 && m.pendingTempoStep:
 		m.stepTempoTraining()
 		m.pendingTempoStep = false
+		m.measuresSinceStep = 0
 	}
 	return m, m.bpm
 }
@@ -217,7 +192,7 @@ func (m *Model) stepTempoTraining() {
 
 func (m Model) View() tea.View {
 	lines := []string{
-		m.renderBanner(),
+		m.renderStatusBar(),
 		"",
 		fmt.Sprintf("♩ = %d BPM", m.bpm),
 		"",
@@ -233,17 +208,30 @@ func (m Model) View() tea.View {
 	return v
 }
 
-func (m Model) renderBanner() string {
-	shape, letters, word := shapeStopped, letterStopped, "STOPPED"
+// playingStatus returns "PLAYING" or "STOPPED".
+func (m Model) playingStatus() string {
 	if m.playing {
-		shape, letters, word = shapePlaying, letterPlaying, "PLAYING"
+		return "PLAYING"
 	}
-	_ = word // word is embedded in the letters glyph itself
-	lines := make([]string, 3)
-	for i := range lines {
-		lines[i] = shape[i] + " " + letters[i]
+	return "STOPPED"
+}
+
+// renderStatusBar renders the one-line status bar: app name, playing
+// status, and (while tempo training is on) a 1-based measure counter
+// showing progress toward the next step. See design/07-status-bar.md.
+func (m Model) renderStatusBar() string {
+	parts := []string{appName, m.playingStatus()}
+	if m.tempoTrainingOn {
+		// A measure completing (beat 4) bumps measuresSinceStep right away so
+		// the interval threshold can be checked, but the displayed count
+		// shouldn't advance until beat 1 of the next measure actually lands.
+		display := m.measuresSinceStep + 1
+		if m.currentBeat == beatsPerMeasure {
+			display = m.measuresSinceStep
+		}
+		parts = append(parts, fmt.Sprintf("%d/%d", min(display, m.stepIntervalMeasures), m.stepIntervalMeasures))
 	}
-	return strings.Join(lines, "\n")
+	return strings.Join(parts, "  ·  ")
 }
 
 // beatDotStyled renders the dot for beat slot i (1-indexed), applying the

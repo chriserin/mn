@@ -6,7 +6,7 @@ Feature: Tempo training
   Background:
     Given the metronome app has started
 
-  @ft:12
+  @ft:16
   Scenario: Enable tempo training
     Given the metronome is playing
     And   the tempo training header reads "Tempo Training: off"
@@ -42,14 +42,14 @@ Feature: Tempo training
     And   beat 1 of the next measure is struck
     Then  the BPM readout should show "♩ = 130 BPM"
 
-  @ft:13
+  @ft:19
   Scenario: Disable tempo training
     Given tempo training is enabled
     When  I press "t"
     Then  the tempo training header should read "Tempo Training: off"
     And   the tempo training table should not be shown
 
-  @ft:14
+  @ft:20
   Scenario: Tempo training increases BPM after the configured number of measures
     Given tempo training is enabled with step 10 BPM every 8 measures
     And   the BPM is 120
@@ -73,7 +73,7 @@ Feature: Tempo training
     Then  the BPM readout should show "♩ = 130 BPM"
     Then  the beat immediately following that should be scheduled at 130 BPM
 
-  @ft:15
+  @ft:22
   Scenario: Tempo training holds once the target BPM is reached
     Given tempo training is enabled with step 10 BPM every 8 measures and a target of 130
     And   the BPM is 120
@@ -84,7 +84,7 @@ Feature: Tempo training
     When  8 more measures have elapsed
     Then  the BPM readout should still show "♩ = 130 BPM"
     And   the tempo training header should read "Tempo Training: target reached (130 bpm)"
-    And   the status banner should show the playing shape and the word "PLAYING"
+    And   the status bar should show "PLAYING"
 
   @ft:17
   Scenario: Default tempo-training header, table hidden
@@ -107,14 +107,14 @@ Feature: Tempo training
     When  I press "]"
     Then  the tempo training table's Step row should read "3 bpm"
 
-  @ft:19
+  @ft:26
   Scenario: Decrease the tempo-training step size
     Given tempo training is enabled
     And   the tempo-training step is 2 BPM
     When  I press "["
     Then  the tempo training table's Step row should read "1 bpm"
 
-  @ft:20
+  @ft:27
   Scenario: Tempo-training step size cannot go below the minimum
     Given tempo training is enabled
     And   the tempo-training step is 1 BPM
@@ -128,7 +128,7 @@ Feature: Tempo training
     When  I press "]"
     Then  the tempo training table's Step row should read "20 bpm"
 
-  @ft:22
+  @ft:29
   Scenario: Adjusting the step size works while the metronome is stopped
     Given tempo training is enabled
     And   the metronome is stopped
@@ -160,14 +160,14 @@ Feature: Tempo training
     When  I press "{"
     Then  the tempo training table's Interval row should read "7 measures"
 
-  @ft:26
+  @ft:33
   Scenario: Tempo-training interval cannot go below the minimum
     Given tempo training is enabled
     And   the tempo-training interval is 1 measure
     When  I press "{"
     Then  the tempo training table's Interval row should read "1 measure"
 
-  @ft:27
+  @ft:34
   Scenario: Tempo-training interval cannot go above the maximum
     Given tempo training is enabled
     And   the tempo-training interval is 32 measures
@@ -182,7 +182,7 @@ Feature: Tempo training
     When  I press "}"
     Then  the tempo training table's Interval row should read "9 measures"
 
-  @ft:29
+  @ft:36
   Scenario: Changed interval is used for the next tempo-training increase
     Given tempo training is enabled with step 10 BPM every 8 measures
     And   the BPM is 120
@@ -216,14 +216,14 @@ Feature: Tempo training
     When  I press "n"
     Then  the tempo training table's Target row should read "20 bpm"
 
-  @ft:33
+  @ft:40
   Scenario: Tempo-training target cannot go above the maximum
     Given tempo training is enabled
     And   the tempo-training target is 300 BPM
     When  I press "m"
     Then  the tempo training table's Target row should read "300 bpm"
 
-  @ft:34
+  @ft:41
   Scenario: Adjusting the target works while the metronome is stopped
     Given tempo training is enabled
     And   the metronome is stopped
@@ -268,7 +268,7 @@ Feature: Tempo training
     And   beat 1 of the next measure is struck
     Then  the BPM readout should show "♩ = 120 BPM"
 
-  @ft:36
+  @ft:69
   Scenario: Tempo training holds once BPM steps down to reach the target
     Given tempo training is enabled with step 10 BPM every 8 measures and a target of 110
     And   the BPM is 120
@@ -329,7 +329,7 @@ Feature: Tempo training
     When  I press "space"
     Then  the tempo training table's Start row should read "120 bpm"
 
-  @ft:40
+  @ft:54
   Scenario: Start row stays fixed while tempo training steps the BPM away from it
     Given tempo training is enabled with step 10 BPM every 8 measures
     And   the BPM is 120
@@ -339,7 +339,7 @@ Feature: Tempo training
     Then  the BPM readout should show "♩ = 130 BPM"
     And   the tempo training table's Start row should still read "120 bpm"
 
-  @ft:41
+  @ft:55
   Scenario: Start row is re-captured after stopping and restarting at a new BPM
     Given tempo training is enabled
     And   the metronome is playing
@@ -361,7 +361,7 @@ Feature: Tempo training
     Then  the BPM readout should show "♩ = 130 BPM"
     When  I press "space"
     Then  the BPM readout should show "♩ = 120 BPM"
-    And   the status banner should show the stopped shape and the word "STOPPED"
+    And   the status bar should show "STOPPED"
 
   @ft:59
   Scenario: Start does not revert to a drifted BPM when the metronome stops
@@ -373,11 +373,11 @@ Feature: Tempo training
     And   I press "space"
     Then  the tempo training table's Start row should read "120 bpm"
 
-  @ft:54
+  @ft:70
   Scenario: Tempo training table is hidden by default
     Then  the tempo training table should not be shown
 
-  @ft:55
+  @ft:71
   Scenario: Tempo training table appears when turned on
     When  I press "t"
     Then  the tempo training table should be shown
@@ -391,3 +391,52 @@ Feature: Tempo training
   @ft:57
   Scenario: Tempo training header is always shown, even while off
     Then  the tempo training header should read "Tempo Training: off"
+
+  @ft:63
+  Scenario: Measure counter is hidden when tempo training is off
+    Then  the status bar should read "mn  ·  STOPPED"
+
+  @ft:64
+  Scenario: Measure counter appears in the status bar once tempo training is on
+    Given tempo training is enabled with step 10 BPM every 8 measures
+    And   the metronome is playing
+    Then  the status bar should read "mn  ·  PLAYING  ·  1/8"
+
+  @ft:65
+  Scenario: Measure counter increments as measures complete
+    Given tempo training is enabled with step 10 BPM every 8 measures
+    And   the metronome is playing
+    When  3 measures have elapsed
+    Then  the status bar should read "mn  ·  PLAYING  ·  3/8"
+
+  @ft:66
+  Scenario: Measure counter holds at the interval value between beat 4 and beat 1
+    Given tempo training is enabled with step 10 BPM every 8 measures
+    And   the metronome is playing
+    When  8 measures have elapsed
+    Then  the status bar should read "mn  ·  PLAYING  ·  8/8"
+
+  @ft:67
+  Scenario: Measure counter resets once the pending step lands on beat 1
+    Given tempo training is enabled with step 10 BPM every 8 measures
+    And   the metronome is playing
+    When  8 measures have elapsed
+    And   beat 1 of the next measure is struck
+    Then  the status bar should read "mn  ·  PLAYING  ·  1/8"
+
+  @ft:68
+  Scenario: Measure counter resets when the metronome stops
+    Given tempo training is enabled with step 10 BPM every 8 measures
+    And   the metronome is playing
+    When  3 measures have elapsed
+    And   I press "space"
+    Then  the status bar should read "mn  ·  STOPPED  ·  1/8"
+
+  @ft:72
+  Scenario: Measure counter does not advance until beat 1 of the next measure
+    Given tempo training is enabled with step 10 BPM every 8 measures
+    And   the metronome is playing
+    When  1 measure has elapsed
+    Then  the status bar should read "mn  ·  PLAYING  ·  1/8"
+    When  beat 1 of the next measure is struck
+    Then  the status bar should read "mn  ·  PLAYING  ·  2/8"

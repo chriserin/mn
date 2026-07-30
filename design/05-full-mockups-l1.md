@@ -1,5 +1,8 @@
 # Full-Screen Mockups — L1 (Shape + Lettering Combo)
 
+> **Superseded:** the L1 banner shown here was removed in favor of a
+> one-line status bar. See `07-status-bar.md`.
+
 Final direction: the L1 banner from `03-status-banner-variations.md` —
 compact shape icon beside figlet `mini` lettering, 3 rows tall for both
 states so toggling start/stop never resizes the box. All six states from

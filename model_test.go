@@ -44,6 +44,14 @@ func bpmLine(bpm int) string {
 	return fmt.Sprintf("♩ = %d BPM", bpm)
 }
 
+func assertStatusBar(t *testing.T, m Model, want string) {
+	t.Helper()
+	got := m.renderStatusBar()
+	if got != want {
+		t.Errorf("expected status bar %q, got %q", want, got)
+	}
+}
+
 // @ft:1
 func TestDefaultBPMOnStartup(t *testing.T) {
 	m := New()
@@ -52,12 +60,7 @@ func TestDefaultBPMOnStartup(t *testing.T) {
 	if !strings.Contains(view, bpmLine(120)) {
 		t.Errorf("expected BPM readout %q, got:\n%s", bpmLine(120), view)
 	}
-	if !strings.Contains(view, letterStopped[0]) {
-		t.Errorf("expected status banner to show the word STOPPED, got:\n%s", view)
-	}
-	if !strings.Contains(view, shapeStopped[0]) {
-		t.Errorf("expected status banner to show the stopped shape, got:\n%s", view)
-	}
+	assertStatusBar(t, m, "mn  ·  STOPPED")
 }
 
 // @ft:2
@@ -65,13 +68,7 @@ func TestStartTheMetronome(t *testing.T) {
 	m := New()
 	m = press(m, "space")
 
-	view := m.View().Content
-	if !strings.Contains(view, letterPlaying[0]) {
-		t.Errorf("expected status banner to show the word PLAYING, got:\n%s", view)
-	}
-	if !strings.Contains(view, shapePlaying[0]) {
-		t.Errorf("expected status banner to show the playing shape, got:\n%s", view)
-	}
+	assertStatusBar(t, m, "mn  ·  PLAYING")
 }
 
 // @ft:3
@@ -81,13 +78,7 @@ func TestStopTheMetronome(t *testing.T) {
 
 	m = press(m, "space")
 
-	view := m.View().Content
-	if !strings.Contains(view, letterStopped[0]) {
-		t.Errorf("expected status banner to show the word STOPPED, got:\n%s", view)
-	}
-	if !strings.Contains(view, shapeStopped[0]) {
-		t.Errorf("expected status banner to show the stopped shape, got:\n%s", view)
-	}
+	assertStatusBar(t, m, "mn  ·  STOPPED")
 }
 
 // @ft:4
@@ -243,7 +234,7 @@ func TestBeat1IsVisuallyAccented(t *testing.T) {
 	}
 }
 
-// @ft:49
+// @ft:12
 func TestJMirrorsDownForBPM(t *testing.T) {
 	m := New()
 	m.bpm = 120
@@ -253,7 +244,7 @@ func TestJMirrorsDownForBPM(t *testing.T) {
 	assertBPM(t, m, 119)
 }
 
-// @ft:50
+// @ft:13
 func TestKMirrorsUpForBPM(t *testing.T) {
 	m := New()
 	m.bpm = 120
@@ -263,7 +254,7 @@ func TestKMirrorsUpForBPM(t *testing.T) {
 	assertBPM(t, m, 121)
 }
 
-// @ft:51
+// @ft:14
 func TestShiftJMirrorsShiftDownForBPM(t *testing.T) {
 	m := New()
 	m.bpm = 120
@@ -273,7 +264,7 @@ func TestShiftJMirrorsShiftDownForBPM(t *testing.T) {
 	assertBPM(t, m, 110)
 }
 
-// @ft:52
+// @ft:15
 func TestShiftKMirrorsShiftUpForBPM(t *testing.T) {
 	m := New()
 	m.bpm = 120

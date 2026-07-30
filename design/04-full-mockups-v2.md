@@ -1,5 +1,8 @@
 # Full-Screen Mockups v2 — Shape-Based Status Indicator
 
+> **Superseded:** the play/stop banner shown here was removed in favor of a
+> one-line status bar. See `07-status-bar.md`.
+
 Same six states as `02-mockups.md`, updated to use the aspect-ratio-corrected
 block/triangle shape (variant H, medium size, corner placement J1 from
 `03-status-banner-variations.md`) in place of the original plain

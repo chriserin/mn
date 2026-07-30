@@ -48,11 +48,11 @@ Rough sketch of a single-screen TUI:
 
 ```
 ┌─────────────────────────────────────────┐
+│  mn  ·  PLAYING  ·  3/8                  │
+│                                           │
 │              ♩ = 120 BPM                 │
 │                                           │
 │         ●   ○   ○   ○      (beat dots)   │
-│                                           │
-│        [pulsing shape/color on beat]     │
 │                                           │
 │  Tempo Training: on                      │
 │  ┌──────────┬───────────┐                │
@@ -65,6 +65,10 @@ Rough sketch of a single-screen TUI:
 │  ↑/↓ bpm   space: start/stop   t: train  │
 └─────────────────────────────────────────┘
 ```
+
+A one-line status bar (app name, `PLAYING`/`STOPPED`, and a `x/8` measure
+counter for tempo training) replaces the earlier shape+lettering banner —
+see `design/07-status-bar.md`.
 
 Tempo training has a header line that's always shown ("Tempo Training:
 off/on/target reached (N bpm)"), plus a key/value table (`Start`/`Step`/

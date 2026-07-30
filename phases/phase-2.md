@@ -13,6 +13,7 @@ Automatic tempo stepping toward a target BPM over time, layered on top of phase 
 - Tempo training does not advance while the metronome is stopped (no measures elapse while stopped).
 - Tempo training displayed as an always-visible header line ("Tempo Training: off / on / target reached (N bpm)") plus a key/value table (Start, Step, Interval, Target rows) that is only rendered while training is on, per `design/06-tempo-training-table.md` option E. Interval row reads the full word "measures" (e.g. "8 measures").
 - `startBPM`: the BPM the current run began at. Mirrors the live BPM readout while stopped (so it moves along with manual BPM adjustments); captured and held fixed the moment the metronome starts playing. When the metronome stops, `bpm` reverts to `startBPM` (undoing any drift from tempo training that run) — the relationship is one-directional; `startBPM` never reverts to match a drifted `bpm`.
+- Measure counter (`x/8`) in the status bar, showing `measuresSinceStep`/`stepIntervalMeasures`. Only shown while tempo training is on. Holds at the interval value between beat 4 and beat 1 (matching the deferred step-application timing), resetting to 0 when the pending step actually lands. See `design/07-status-bar.md`.
 
 ## Out of scope
 

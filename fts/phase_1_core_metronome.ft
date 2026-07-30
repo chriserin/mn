@@ -9,18 +9,18 @@ Feature: Core metronome
   @ft:1
   Scenario: Default BPM on startup
     Then  the BPM readout should show "♩ = 120 BPM"
-    And   the status banner should show the stopped shape and the word "STOPPED"
+    And   the status bar should read "mn  ·  STOPPED"
 
   @ft:2
   Scenario: Start the metronome
     When  I press "space"
-    Then  the status banner should show the playing shape and the word "PLAYING"
+    Then  the status bar should read "mn  ·  PLAYING"
 
   @ft:3
   Scenario: Stop the metronome
     Given the metronome is playing
     When  I press "space"
-    Then  the status banner should show the stopped shape and the word "STOPPED"
+    Then  the status bar should read "mn  ·  STOPPED"
 
   @ft:4
   Scenario: Increase BPM by a small increment
@@ -85,25 +85,25 @@ Feature: Core metronome
     And   beat 1's dot should pulse in the accent color when struck
     And   beats 2 through 4 should show no caret and pulse in the plain color when struck
 
-  @ft:49
+  @ft:12
   Scenario: j mirrors the down key for BPM
     Given the BPM is 120
     When  I press "j"
     Then  the BPM readout should show "♩ = 119 BPM"
 
-  @ft:50
+  @ft:13
   Scenario: k mirrors the up key for BPM
     Given the BPM is 120
     When  I press "k"
     Then  the BPM readout should show "♩ = 121 BPM"
 
-  @ft:51
+  @ft:14
   Scenario: shift+j mirrors the shift+down key for BPM
     Given the BPM is 120
     When  I press "shift+j"
     Then  the BPM readout should show "♩ = 110 BPM"
 
-  @ft:52
+  @ft:15
   Scenario: shift+k mirrors the shift+up key for BPM
     Given the BPM is 120
     When  I press "shift+k"
