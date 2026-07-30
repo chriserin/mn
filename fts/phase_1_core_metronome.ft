@@ -17,6 +17,11 @@ Feature: Core metronome
     When  I press "space"
     Then  the status bar should show "PLAYING"
 
+  @ft:73
+  Scenario: Beat 1 lights immediately on start, not after the first tick
+    When  I press "space"
+    Then  only the beat 1 dot should be lit
+
   @ft:3
   Scenario: Stop the metronome
     Given the metronome is playing

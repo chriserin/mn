@@ -75,6 +75,17 @@ func TestStartTheMetronome(t *testing.T) {
 	assertStatusBar(t, m, "◥ PLAYING ◥◥ mn ◥")
 }
 
+// @ft:73
+func TestBeatOneLightsImmediatelyOnStart(t *testing.T) {
+	m := New()
+	m = press(m, "space")
+
+	if m.currentBeat != 1 {
+		t.Fatalf("expected beat 1 to be lit the instant playback starts, got currentBeat=%d", m.currentBeat)
+	}
+	assertOnlyBeatLit(t, m, 1)
+}
+
 // @ft:3
 func TestStopTheMetronome(t *testing.T) {
 	m := New()

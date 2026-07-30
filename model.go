@@ -132,6 +132,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.playing = !m.playing
 			if m.playing {
 				m.startBPM = m.bpm
+				// Strike beat 1 immediately rather than waiting for the
+				// first tick to elapse, so the beat indicator lights up
+				// the instant playback starts, not a full beat late.
+				m.currentBeat = 1
 				return m, tickCmd(m.bpm)
 			}
 			// Revert any drift tempo training caused this run, rather than
