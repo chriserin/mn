@@ -51,8 +51,8 @@ var (
 	appSegBg = lipgloss.BrightBlack
 	appSegFg = lipgloss.White
 
-	tempoSegBg = lipgloss.Cyan
-	tempoSegFg = lipgloss.Black
+	tempoSegBg = lipgloss.Black
+	tempoSegFg = lipgloss.Cyan
 
 	counterSegBg = lipgloss.Blue
 	counterSegFg = lipgloss.White
@@ -303,8 +303,9 @@ func (m Model) renderStatusBar() string {
 		modeBg = playingBg
 	}
 
-	left := statusSegment(m.playingStatus(), modeBg, modeFg, wedgeAfter) +
-		statusSegment(appName, appSegBg, appSegFg, wedgeAfter)
+	left :=
+		statusSegment(appName, appSegBg, appSegFg, wedgeAfter) +
+			statusSegment(m.playingStatus(), modeBg, modeFg, wedgeAfter)
 
 	middle := statusSegment(m.tempoIndicatorText(), tempoSegBg, tempoSegFg, wedgeAfter)
 
