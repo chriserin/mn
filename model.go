@@ -233,18 +233,16 @@ func (m *Model) stepTempoTraining() {
 }
 
 func (m Model) View() tea.View {
-	lines := []string{
-		m.renderStatusBar(),
+	lines := []string{m.renderStatusBar()}
+	if m.tempoTrainingOn {
+		lines = append(lines, "", m.renderTempoTrainingBlocks())
+	}
+	lines = append(lines,
 		"",
 		renderBigNumber(m.bpm),
 		"",
 		m.renderBeats(),
-		"",
-		m.tempoTrainingHeader(),
-	}
-	if m.tempoTrainingOn {
-		lines = append(lines, m.renderTempoTrainingTable())
-	}
+	)
 	v := tea.NewView(strings.Join(lines, "\n"))
 	v.AltScreen = true
 	return v
@@ -371,10 +369,11 @@ func (m Model) renderBeats() string {
 	return caretLine + "\n" + dotsLine
 }
 
-// tempoRow is one label/value pair in the tempo-training table.
+// tempoRow is one label/value/unit triple in the tempo-training display.
 type tempoRow struct {
 	label string
 	value string
+	unit  string
 }
 
 func pluralize(n int, singular, plural string) string {
@@ -395,16 +394,13 @@ func (m Model) tempoTrainingState() string {
 	return "on"
 }
 
-// tempoTrainingHeader is always rendered, regardless of whether tempo
-// training is on, so on/off/target-reached status is visible at a glance.
-// See design/06-tempo-training-table.md option E.
+// tempoTrainingHeader summarizes on/off/target-reached status, for tests.
 func (m Model) tempoTrainingHeader() string {
 	return "Tempo Training: " + m.tempoTrainingState()
 }
 
-// tempoTrainingRows returns the tempo-training table's rows in display
-// order: Start, Step, Interval, Target. Only rendered while tempo training
-// is on (see tempoTrainingHeader for the always-visible on/off status).
+// tempoTrainingRows returns the tempo-training attributes in display order:
+// Start, Step, Interval, Target. Only rendered while tempo training is on.
 func (m Model) tempoTrainingRows() []tempoRow {
 	startBPM := m.bpm
 	if m.playing {
@@ -412,36 +408,88 @@ func (m Model) tempoTrainingRows() []tempoRow {
 	}
 
 	return []tempoRow{
-		{"Start", fmt.Sprintf("%d bpm", startBPM)},
-		{"Step", fmt.Sprintf("%d bpm", m.stepBPM)},
-		{"Interval", fmt.Sprintf("%d %s", m.stepIntervalMeasures, pluralize(m.stepIntervalMeasures, "measure", "measures"))},
-		{"Target", fmt.Sprintf("%d bpm", m.targetBPM)},
+		{"Start", fmt.Sprintf("%d", startBPM), "bpm"},
+		{"Step", fmt.Sprintf("%d", m.stepBPM), "bpm"},
+		{"Interval", fmt.Sprintf("%d", m.stepIntervalMeasures), pluralize(m.stepIntervalMeasures, "measure", "measures")},
+		{"Target", fmt.Sprintf("%d", m.targetBPM), "bpm"},
 	}
 }
 
-// tempoTrainingRow looks up a single row's value by label, for tests.
+// tempoTrainingRow looks up a single row's "value unit" text by label, for
+// tests.
 func (m Model) tempoTrainingRow(label string) string {
 	for _, r := range m.tempoTrainingRows() {
 		if r.label == label {
-			return r.value
+			return strings.TrimSpace(r.value + " " + r.unit)
 		}
 	}
 	return ""
 }
 
-func (m Model) renderTempoTrainingTable() string {
+// tempoTrainingBlockGap is the space left between (and around) attribute
+// blocks when the terminal is too narrow to spread them across its full
+// width.
+const tempoTrainingBlockGap = 4
+
+// centerPad centers s within width by padding both sides with spaces,
+// leaving s untouched if it's already at or beyond width.
+func centerPad(s string, width int) string {
+	pad := width - len(s)
+	if pad <= 0 {
+		return s
+	}
+	left := pad / 2
+	right := pad - left
+	return strings.Repeat(" ", left) + s + strings.Repeat(" ", right)
+}
+
+// tempoBlockLabelStyle styles a block's label row (dim, secondary to the
+// value). tempoBlockValueStyle styles the value+unit row for every
+// attribute except Target, which uses accentStyle instead to draw the eye
+// to the goal tempo training is working toward.
+var tempoBlockLabelStyle = dimStyle
+var tempoBlockValueStyle = plainStyle
+
+// tempoBlockValueStyleFor returns the value-row style for the attribute
+// with the given label.
+func tempoBlockValueStyleFor(label string) lipgloss.Style {
+	if label == "Target" {
+		return accentStyle
+	}
+	return tempoBlockValueStyle
+}
+
+// renderTempoTrainingBlocks renders each tempo-training attribute (Start,
+// Step, Interval, Target) as a block of 2 centered rows (label, then value
+// and unit together), spaced evenly across the terminal width. Only
+// rendered while tempo training is on.
+func (m Model) renderTempoTrainingBlocks() string {
 	rows := m.tempoTrainingRows()
-	labelWidth, valueWidth := 0, 0
-	for _, r := range rows {
-		labelWidth = max(labelWidth, len(r.label))
-		valueWidth = max(valueWidth, len(r.value))
+
+	valueUnit := make([]string, len(rows))
+	blockWidth := 0
+	for i, r := range rows {
+		valueUnit[i] = strings.TrimSpace(r.value + " " + r.unit)
+		blockWidth = max(blockWidth, len(r.label), len(valueUnit[i]))
 	}
 
-	var b strings.Builder
-	fmt.Fprintf(&b, "┌%s┬%s┐\n", strings.Repeat("─", labelWidth+2), strings.Repeat("─", valueWidth+2))
-	for _, r := range rows {
-		fmt.Fprintf(&b, "│ %-*s │ %-*s │\n", labelWidth, r.label, valueWidth, r.value)
+	blocks := make([]string, len(rows))
+	for i, r := range rows {
+		blocks[i] = tempoBlockLabelStyle.Render(centerPad(r.label, blockWidth)) + "\n" +
+			tempoBlockValueStyleFor(r.label).Render(centerPad(valueUnit[i], blockWidth))
 	}
-	fmt.Fprintf(&b, "└%s┴%s┘", strings.Repeat("─", labelWidth+2), strings.Repeat("─", valueWidth+2))
-	return b.String()
+
+	totalBlocksWidth := blockWidth * len(blocks)
+	gapWidth := tempoTrainingBlockGap
+	if m.width > totalBlocksWidth {
+		gapWidth = (m.width - totalBlocksWidth) / (len(blocks) + 1)
+	}
+	gap := strings.Repeat(" ", gapWidth)
+
+	pieces := make([]string, 0, len(blocks)*2+1)
+	pieces = append(pieces, gap)
+	for _, b := range blocks {
+		pieces = append(pieces, b, gap)
+	}
+	return lipgloss.JoinHorizontal(lipgloss.Top, pieces...)
 }

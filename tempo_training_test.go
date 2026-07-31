@@ -46,9 +46,9 @@ func assertTableShown(t *testing.T, m Model, shown bool) {
 		t.Errorf("expected tempo training table shown=%v, got tempoTrainingOn=%v", shown, m.tempoTrainingOn)
 	}
 	view := m.View().Content
-	hasTable := strings.Contains(view, "┌")
+	hasTable := strings.Contains(view, "Start")
 	if hasTable != shown {
-		t.Errorf("expected tempo training table rendered=%v, got rendered=%v in view:\n%s", shown, hasTable, view)
+		t.Errorf("expected tempo training blocks rendered=%v, got rendered=%v in view:\n%s", shown, hasTable, view)
 	}
 }
 
