@@ -455,11 +455,36 @@ func (m Model) renderBeats() string {
 	return lipgloss.JoinHorizontal(lipgloss.Top, pieces...)
 }
 
-// tempoRow is one label/value/unit triple in the tempo-training display.
+// tempoRow is one attribute in the tempo-training display: a label/value/
+// unit triple, plus the keys that adjust it (e.g. "k/j/K/J"), shown next to
+// the label so the controls are visible without a separate legend.
 type tempoRow struct {
 	label string
 	value string
 	unit  string
+	keys  string
+}
+
+// displayLabel returns the row's label with its adjustment keys appended,
+// e.g. "Step [/]", for measuring the label line's plain-text width.
+func (r tempoRow) displayLabel() string {
+	return fmt.Sprintf("%s %s", r.label, r.keys)
+}
+
+// renderLabelLine centers the row's label+keys text within width, styling
+// the label and the keys hint in separate colors (tempoBlockLabelStyle,
+// tempoBlockKeysStyle) so the keybinding reads as distinct from the label
+// rather than blending into it.
+func (r tempoRow) renderLabelLine(width int) string {
+	text := r.displayLabel()
+	pad := width - len(text)
+	if pad < 0 {
+		pad = 0
+	}
+	left, right := pad/2, pad-pad/2
+	return strings.Repeat(" ", left) +
+		tempoBlockLabelStyle.Render(r.label) + " " + tempoBlockKeysStyle.Render(r.keys) +
+		strings.Repeat(" ", right)
 }
 
 func pluralize(n int, singular, plural string) string {
@@ -494,10 +519,10 @@ func (m Model) tempoTrainingRows() []tempoRow {
 	}
 
 	return []tempoRow{
-		{"Start", fmt.Sprintf("%d", startBPM), "bpm"},
-		{"Step", fmt.Sprintf("%d", m.stepBPM), "bpm"},
-		{"Interval", fmt.Sprintf("%d", m.stepIntervalMeasures), pluralize(m.stepIntervalMeasures, "measure", "measures")},
-		{"Target", fmt.Sprintf("%d", m.targetBPM), "bpm"},
+		{"Start", fmt.Sprintf("%d", startBPM), "bpm", "j/k/J/K"},
+		{"Step", fmt.Sprintf("%d", m.stepBPM), "bpm", "[/]"},
+		{"Interval", fmt.Sprintf("%d", m.stepIntervalMeasures), pluralize(m.stepIntervalMeasures, "measure", "measures"), "{/}"},
+		{"Target", fmt.Sprintf("%d", m.targetBPM), "bpm", "n/m/N/M"},
 	}
 }
 
@@ -529,11 +554,15 @@ func centerPad(s string, width int) string {
 	return strings.Repeat(" ", left) + s + strings.Repeat(" ", right)
 }
 
-// tempoBlockLabelStyle styles a block's label row (dim, secondary to the
-// value). tempoBlockValueStyle styles the value+unit row for every
-// attribute except Target, which uses accentStyle instead to draw the eye
-// to the goal tempo training is working toward.
-var tempoBlockLabelStyle = dimStyle
+// tempoBlockLabelStyle styles a block's label text brightly, since it's the
+// primary thing being named. tempoBlockKeysStyle styles the adjustment-keys
+// hint next to it in a muted gray, so the keybinding reads as secondary
+// reference material rather than competing with the label for attention.
+// tempoBlockValueStyle styles the value+unit row for every attribute except
+// Target, which uses accentStyle instead to draw the eye to the goal tempo
+// training is working toward.
+var tempoBlockLabelStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.BrightWhite)
+var tempoBlockKeysStyle = dimStyle
 var tempoBlockValueStyle = plainStyle
 
 // tempoBlockValueStyleFor returns the value-row style for the attribute
@@ -556,12 +585,12 @@ func (m Model) renderTempoTrainingBlocks() string {
 	blockWidth := 0
 	for i, r := range rows {
 		valueUnit[i] = strings.TrimSpace(r.value + " " + r.unit)
-		blockWidth = max(blockWidth, len(r.label), len(valueUnit[i]))
+		blockWidth = max(blockWidth, len(r.displayLabel()), len(valueUnit[i]))
 	}
 
 	blocks := make([]string, len(rows))
 	for i, r := range rows {
-		blocks[i] = tempoBlockLabelStyle.Render(centerPad(r.label, blockWidth)) + "\n" +
+		blocks[i] = r.renderLabelLine(blockWidth) + "\n" +
 			tempoBlockValueStyleFor(r.label).Render(centerPad(valueUnit[i], blockWidth))
 	}
 
