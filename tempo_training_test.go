@@ -674,7 +674,7 @@ func TestTempoTrainingHeaderAlwaysShownEvenWhileOff(t *testing.T) {
 func TestMeasureCounterHiddenWhenTempoTrainingOff(t *testing.T) {
 	m := New()
 
-	assertStatusBar(t, m, "◥ mn ◥◥ STOPPED ◥◥ ♩ 120 bpm ◥")
+	assertStatusBar(t, m, "◥ mn ◥◥ STOPPED ◥◥ ♩ 120 bpm ◥◤ tempo training (t) ◤")
 }
 
 // @ft:64

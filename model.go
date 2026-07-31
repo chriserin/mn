@@ -56,6 +56,12 @@ var (
 
 	counterSegBg = lipgloss.Blue
 	counterSegFg = lipgloss.White
+
+	// tempoHintFg is the "tempo training (t)" hint's lettering: darker than
+	// tempoSegFg so the hint reads as a low-key nudge rather than
+	// competing with the tempo readout for attention, even though it
+	// shares the same background.
+	tempoHintFg = lipgloss.BrightBlack
 )
 
 // Right-angle triangle wedges (Unicode Geometric Shapes block), not the
@@ -292,9 +298,10 @@ func (m Model) tempoIndicatorText() string {
 // renderStatusBar renders a vim-airline-style status bar spanning the full
 // terminal width: a colored mode block (PLAYING/STOPPED) and app-name block
 // on the left, the current-tempo readout centered in the middle, and a
-// measure counter block pinned to the right edge (while tempo training is
-// on). The bar's background color fills the remaining gaps. See
-// design/07-status-bar.md.
+// block pinned to the right edge — the measure counter while tempo training
+// is on, or a "tempo training (t)" hint while it's off, so the toggle key
+// is discoverable even before it's ever been used. The bar's background
+// color fills the remaining gaps. See design/07-status-bar.md.
 func (m Model) renderStatusBar() string {
 	modeBg := stoppedBg
 	if m.playing {
@@ -310,6 +317,8 @@ func (m Model) renderStatusBar() string {
 	right := ""
 	if m.tempoTrainingOn {
 		right = statusSegment(m.measureCounterText(), appSegBg, counterSegFg, wedgeBefore)
+	} else {
+		right = statusSegment("tempo training (t)", tempoSegBg, tempoHintFg, wedgeBefore)
 	}
 
 	leftW, middleW, rightW := lipgloss.Width(left), lipgloss.Width(middle), lipgloss.Width(right)

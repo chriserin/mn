@@ -63,7 +63,7 @@ func TestDefaultBPMOnStartup(t *testing.T) {
 	if !strings.Contains(view, bpmLine(120)) {
 		t.Errorf("expected BPM readout %q, got:\n%s", bpmLine(120), view)
 	}
-	assertStatusBar(t, m, "◥ mn ◥◥ STOPPED ◥◥ ♩ 120 bpm ◥")
+	assertStatusBar(t, m, "◥ mn ◥◥ STOPPED ◥◥ ♩ 120 bpm ◥◤ tempo training (t) ◤")
 }
 
 // @ft:74
@@ -73,7 +73,7 @@ func TestStatusBarTempoIndicatorTracksBPM(t *testing.T) {
 
 	m = press(m, "up")
 
-	assertStatusBar(t, m, "◥ mn ◥◥ STOPPED ◥◥ ♩ 121 bpm ◥")
+	assertStatusBar(t, m, "◥ mn ◥◥ STOPPED ◥◥ ♩ 121 bpm ◥◤ tempo training (t) ◤")
 }
 
 // @ft:2
@@ -81,7 +81,7 @@ func TestStartTheMetronome(t *testing.T) {
 	m := New()
 	m = press(m, "space")
 
-	assertStatusBar(t, m, "◥ mn ◥◥ PLAYING ◥◥ ♩ 120 bpm ◥")
+	assertStatusBar(t, m, "◥ mn ◥◥ PLAYING ◥◥ ♩ 120 bpm ◥◤ tempo training (t) ◤")
 }
 
 // @ft:73
@@ -102,7 +102,7 @@ func TestStopTheMetronome(t *testing.T) {
 
 	m = press(m, "space")
 
-	assertStatusBar(t, m, "◥ mn ◥◥ STOPPED ◥◥ ♩ 120 bpm ◥")
+	assertStatusBar(t, m, "◥ mn ◥◥ STOPPED ◥◥ ♩ 120 bpm ◥◤ tempo training (t) ◤")
 }
 
 // @ft:4
