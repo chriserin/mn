@@ -94,9 +94,9 @@ Feature: Core metronome
     Given the BPM is 120
     And   the metronome is playing
     When  a new measure begins
-    Then  a "^" caret should be shown above beat 1's dot
-    And   beat 1's dot should pulse in the accent color when struck
-    And   beats 2 through 4 should show no caret and pulse in the plain color when struck
+    Then  the UI should indicate beat 1 as accented, independent of color
+    And   beat 1 should pulse in the accent color when struck
+    And   beats 2 through 4 should not be indicated as accented and should pulse in the plain color when struck
 
   @ft:12
   Scenario: j mirrors the down key for BPM

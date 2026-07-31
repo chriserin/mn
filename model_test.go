@@ -232,30 +232,32 @@ func TestBeat1IsVisuallyAccented(t *testing.T) {
 	m.bpm = 120
 	m.playing = true
 
-	view := m.View().Content
-	if !strings.Contains(view, "^") {
-		t.Fatalf("expected a \"^\" caret above beat 1 at all times, got:\n%s", view)
+	// Beat 1 is indicated as accented independent of color (currently: a
+	// solid border, vs. beats 2-4's dashed border), so the accent survives
+	// in a no-color/colorblind terminal.
+	if pillBorderFor(1) == pillBorderFor(2) {
+		t.Fatalf("expected beat 1 to be indicated as accented independent of color, but its border matches beats 2-4's")
+	}
+	for i := 2; i <= beatsPerMeasure; i++ {
+		if pillBorderFor(i) != pillBorderFor(2) {
+			t.Errorf("expected beats 2-4 to share the same (non-accented) border, beat %d differs", i)
+		}
 	}
 
 	next, _ := m.Update(beatMsg{}) // beat 1 struck
 	m = next.(Model)
 
-	beat1Rendered := m.beatDotStyled(1)
-	beat2Rendered := m.beatDotStyled(2) // unlit right now, but style differs when struck below
+	beat1Bg := m.beatPillBg(1)
+	beat2Bg := m.beatPillBg(2) // unlit right now, but color differs when struck below
 
 	next, _ = m.Update(beatMsg{}) // beat 2 struck
 	m2 := next.(Model)
-	beat2StruckRendered := m2.beatDotStyled(2)
+	beat2StruckBg := m2.beatPillBg(2)
 
-	if beat1Rendered == beat2StruckRendered {
-		t.Errorf("expected beat 1's struck style to differ from beats 2-4's struck style, both rendered as %q", beat1Rendered)
+	if beat1Bg == beat2StruckBg {
+		t.Errorf("expected beat 1's struck color to differ from beats 2-4's struck color, both rendered as %v", beat1Bg)
 	}
-	_ = beat2Rendered
-
-	viewAfterBeat1 := m.View().Content
-	if !strings.Contains(viewAfterBeat1, "^") {
-		t.Errorf("expected the beat-1 caret to remain visible while beat 1 is struck, got:\n%s", viewAfterBeat1)
-	}
+	_ = beat2Bg
 }
 
 // @ft:12

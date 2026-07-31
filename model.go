@@ -340,33 +340,119 @@ func (m Model) measureCounterText() string {
 	return fmt.Sprintf("%d/%d", min(display, m.stepIntervalMeasures), m.stepIntervalMeasures)
 }
 
-// beatDotStyled renders the dot for beat slot i (1-indexed), applying the
-// accent style when beat 1 is currently struck and a plain style for any
-// other struck beat, so beat 1 is visually distinguishable from beats 2-4.
-func (m Model) beatDotStyled(i int) string {
+// Beat-pill colors: dim gray when idle, blue when struck, and a distinct
+// orange for beat 1 when struck so the downbeat reads differently from
+// beats 2-4 even by color alone.
+//
+// beatDimBg uses the 4-bit ANSI palette (lipgloss.BrightBlack) rather than
+// a fixed 256-color value, matching the status bar's approach (see
+// design/07-status-bar.md): it renders using whatever gray the user's
+// terminal theme assigns to that slot instead of a fixed shade that may be
+// washed out on light themes or too dark on others.
+var (
+	beatDimBg    = lipgloss.BrightBlack
+	beatPlainBg  = lipgloss.Color("39")
+	beatAccentBg = lipgloss.Color("208")
+)
+
+// beatPillBg returns the background color for beat slot i (1-indexed).
+func (m Model) beatPillBg(i int) color.Color {
 	if i != m.currentBeat {
-		return dimStyle.Render("○")
+		return beatDimBg
 	}
 	if i == 1 {
-		return accentStyle.Render("●")
+		return beatAccentBg
 	}
-	return plainStyle.Render("●")
+	return beatPlainBg
 }
 
-const beatSeparator = "   "
+const (
+	beatPillGap      = 2 // space left between (and around) beat pills
+	minBeatPillWidth = 5 // smallest a pill can shrink to before losing its rounded shape
+)
 
-func (m Model) renderBeats() string {
-	dots := make([]string, beatsPerMeasure)
-	for i := 1; i <= beatsPerMeasure; i++ {
-		dots[i-1] = m.beatDotStyled(i)
+// beatPillLayout divides the terminal width evenly across beatsPerMeasure
+// pills (with beatPillGap of space between and around them), so the pills
+// stretch across the full width. Any remainder from the division is spread
+// across the first few pills rather than left as slack on one side.
+func (m Model) beatPillLayout() (pillWidths [beatsPerMeasure]int) {
+	totalGap := beatPillGap * (beatsPerMeasure + 1)
+	avail := m.width - totalGap
+	if minTotal := beatsPerMeasure * minBeatPillWidth; avail < minTotal {
+		avail = minTotal
 	}
-	dotsLine := strings.Join(dots, beatSeparator)
-	// Plain width per slot is 1 rune, so the caret (aligned above beat 1)
-	// is followed by enough spaces to span the remaining slots without
-	// needing to measure the ANSI-styled dotsLine.
-	plainWidth := beatsPerMeasure + (beatsPerMeasure-1)*len(beatSeparator)
-	caretLine := "^" + strings.Repeat(" ", plainWidth-1)
-	return caretLine + "\n" + dotsLine
+	base, extra := avail/beatsPerMeasure, avail%beatsPerMeasure
+	for i := range pillWidths {
+		pillWidths[i] = base
+		if i < extra {
+			pillWidths[i]++
+		}
+	}
+	return pillWidths
+}
+
+// pillDashedBorder is pillBorderFor's border for the unaccented beats
+// (2-4): the same "─"/"│" strokes lipgloss.RoundedBorder already uses for
+// the solid accented pill (so the line weight matches and reads just as
+// clearly at beatDimBg's low contrast), alternated with a blank space to
+// open up visible gaps. The rounded corners (╭╮╰╯) are kept as-is so the
+// unaccented pills stay the same silhouette as the accented one.
+var pillDashedBorder = lipgloss.Border{
+	Top:         "─ ",
+	Bottom:      "─ ",
+	Left:        "│",
+	Right:       "│",
+	TopLeft:     "╭",
+	TopRight:    "╮",
+	BottomLeft:  "╰",
+	BottomRight: "╯",
+}
+
+// pillBorderFor returns the border style for beat slot i: a solid rounded
+// border for beat 1 (the accented downbeat), a dashed rounded border for
+// beats 2-4.
+func pillBorderFor(i int) lipgloss.Border {
+	if i == 1 {
+		return lipgloss.RoundedBorder()
+	}
+	return pillDashedBorder
+}
+
+// renderBeatPill renders beat slot i as a solid-colored capsule using
+// pillBorderFor's border, with the border colored to match the fill.
+// BorderBackground is deliberately left unset: setting it paints the space
+// around each corner glyph too, which turns every corner cell into a
+// solid-colored square and hides the rounding (see cmd/pillpreview's
+// boxDrawingRounded, which omits it for the same reason).
+//
+// width is passed straight to Style.Width, not reduced by the border's 2
+// columns first: lipgloss's Width sets the total rendered block size
+// (border included), so subtracting the border first ends up rendering 2
+// columns narrower than requested, which is what was making the pills fall
+// short of the full terminal width.
+func (m Model) renderBeatPill(i, width int) string {
+	bg := m.beatPillBg(i)
+	return lipgloss.NewStyle().
+		Width(width).
+		Background(bg).
+		BorderStyle(pillBorderFor(i)).
+		BorderForeground(bg).
+		Render("")
+}
+
+// renderBeats renders the 4 beat pills. Beat 1's solid border vs. beats
+// 2-4's dashed border (see pillBorderFor) is itself a color-agnostic accent
+// marker, so a separate "^" caret above beat 1 is no longer needed.
+func (m Model) renderBeats() string {
+	pillWidths := m.beatPillLayout()
+	gap := strings.Repeat(" ", beatPillGap)
+
+	pieces := make([]string, 0, beatsPerMeasure*2+1)
+	pieces = append(pieces, gap)
+	for i := 1; i <= beatsPerMeasure; i++ {
+		pieces = append(pieces, m.renderBeatPill(i, pillWidths[i-1]), gap)
+	}
+	return lipgloss.JoinHorizontal(lipgloss.Top, pieces...)
 }
 
 // tempoRow is one label/value/unit triple in the tempo-training display.
