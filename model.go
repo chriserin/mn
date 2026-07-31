@@ -239,7 +239,7 @@ func (m Model) View() tea.View {
 	}
 	lines = append(lines,
 		"",
-		renderBigNumber(m.bpm),
+		lipgloss.PlaceHorizontal(m.width, lipgloss.Center, renderBigNumber(m.bpm)),
 		"",
 		m.renderBeats(),
 	)
