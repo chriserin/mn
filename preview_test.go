@@ -27,6 +27,7 @@ import (
 //	MN_CURRENT_BEAT which beat (1-4) is currently struck, e.g. 2
 //	MN_TEMPO_TRAINING "1" to turn tempo training on
 //	MN_STEP_BPM, MN_STEP_INTERVAL, MN_TARGET_BPM tempo-training attributes
+//	MN_FOCUSED      "0" to preview the unfocused (grayscaled) state
 func TestPreview(t *testing.T) {
 	if os.Getenv("MN_PREVIEW") == "" {
 		t.Skip("set MN_PREVIEW=1 to render a preview, e.g. MN_PREVIEW=1 go test -run TestPreview -v .")
@@ -41,6 +42,7 @@ func TestPreview(t *testing.T) {
 	m.stepBPM = previewEnvInt("MN_STEP_BPM", m.stepBPM)
 	m.stepIntervalMeasures = previewEnvInt("MN_STEP_INTERVAL", m.stepIntervalMeasures)
 	m.targetBPM = previewEnvInt("MN_TARGET_BPM", m.targetBPM)
+	m.focused = previewEnvBool("MN_FOCUSED", true)
 
 	fmt.Println(m.View().Content)
 }

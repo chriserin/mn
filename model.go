@@ -64,6 +64,18 @@ var (
 	tempoHintFg = lipgloss.BrightBlack
 )
 
+// grayMuted and grayProminent are the two substitute colors used in place
+// of any hue-bearing color while the terminal is unfocused (see
+// Model.mutedColor/prominentColor): everything that would normally draw
+// attention with color instead reads as a plain gray UI, so an unfocused
+// mn doesn't compete for attention with whatever the user switched to.
+// Colors that are already gray/black/white (e.g. appSegBg, tempoHintFg)
+// need no substitution and are left alone regardless of focus.
+var (
+	grayMuted     = lipgloss.BrightBlack
+	grayProminent = lipgloss.BrightWhite
+)
+
 // Right-angle triangle wedges (Unicode Geometric Shapes block), not the
 // Nerd Font powerline arrows, so the bar renders correctly without a
 // patched font.
@@ -85,8 +97,9 @@ type beatMsg struct{}
 type Model struct {
 	bpm         int
 	playing     bool
-	currentBeat int // 0 = no beat struck yet; otherwise 1..beatsPerMeasure
-	width       int // terminal width, used to stretch the status bar edge to edge
+	currentBeat int  // 0 = no beat struck yet; otherwise 1..beatsPerMeasure
+	width       int  // terminal width, used to stretch the status bar edge to edge
+	focused     bool // whether the terminal currently has focus; see tea.FocusMsg/BlurMsg
 
 	tempoTrainingOn      bool
 	stepBPM              int
@@ -106,7 +119,33 @@ func New() Model {
 		stepIntervalMeasures: defaultInterval,
 		targetBPM:            defaultTargetBPM,
 		startBPM:             defaultBPM,
+		// Assumed focused until a BlurMsg says otherwise, since most
+		// terminals/multiplexers report an initial FocusMsg only on actual
+		// focus changes, not on startup.
+		focused: true,
 	}
+}
+
+// mutedColor returns c while focused, or grayMuted while unfocused: for
+// colors that play a secondary/idle role (e.g. beats 2-4, the tempo
+// training Start/Step/Interval values), so they read as the dimmer of the
+// two gray tiers.
+func (m Model) mutedColor(c color.Color) color.Color {
+	if m.focused {
+		return c
+	}
+	return grayMuted
+}
+
+// prominentColor returns c while focused, or grayProminent while
+// unfocused: for colors that play a primary/attention-grabbing role (e.g.
+// beat 1, the tempo readout, the Target value), so they read as the
+// brighter of the two gray tiers even with their hue removed.
+func (m Model) prominentColor(c color.Color) color.Color {
+	if m.focused {
+		return c
+	}
+	return grayProminent
 }
 
 func (m Model) Init() tea.Cmd {
@@ -132,6 +171,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
+		return m, nil
+	case tea.FocusMsg:
+		m.focused = true
+		return m, nil
+	case tea.BlurMsg:
+		m.focused = false
 		return m, nil
 	case tea.KeyPressMsg:
 		switch msg.String() {
@@ -251,6 +296,7 @@ func (m Model) View() tea.View {
 	)
 	v := tea.NewView(strings.Join(lines, "\n"))
 	v.AltScreen = true
+	v.ReportFocus = true
 	return v
 }
 
@@ -303,16 +349,19 @@ func (m Model) tempoIndicatorText() string {
 // is discoverable even before it's ever been used. The bar's background
 // color fills the remaining gaps. See design/07-status-bar.md.
 func (m Model) renderStatusBar() string {
-	modeBg := stoppedBg
+	modeBg := m.mutedColor(stoppedBg)
 	if m.playing {
-		modeBg = playingBg
+		modeBg = m.prominentColor(playingBg)
 	}
 
 	left :=
 		statusSegment(appName, appSegBg, appSegFg, wedgeAfter) +
 			statusSegment(m.playingStatus(), modeBg, modeFg, wedgeAfter)
 
-	middle := statusSegment(m.tempoIndicatorText(), tempoSegBg, tempoSegFg, wedgeAfter)
+	var middle = ""
+	if m.focused {
+		middle = statusSegment(m.tempoIndicatorText(), tempoSegBg, m.prominentColor(tempoSegFg), wedgeAfter)
+	}
 
 	right := ""
 	if m.tempoTrainingOn {
@@ -367,12 +416,19 @@ var (
 // beatPillBg returns the background color for beat slot i (1-indexed).
 func (m Model) beatPillBg(i int) color.Color {
 	if i != m.currentBeat {
-		return beatDimBg
+		return beatDimBg // already gray; no substitution needed when unfocused
 	}
 	if i == 1 {
-		return beatAccentBg
+		return m.prominentColor(beatAccentBg)
 	}
-	return beatPlainBg
+	// prominentColor, not mutedColor: while focused this still renders in
+	// beatPlainBg (its own distinct color, unchanged from before), but
+	// while unfocused it converges on the same grayProminent tier as beat
+	// 1's struck color instead of a separate muted gray. Struck vs. idle
+	// needs to stay a big brightness jump in grayscale, or a struck
+	// beat 2-4 reads as indistinguishable from an idle one (both would
+	// otherwise land on a similar dark gray).
+	return m.prominentColor(beatPlainBg)
 }
 
 const (
@@ -419,13 +475,26 @@ var pillDashedBorder = lipgloss.Border{
 
 // pillBorderFor returns the border style for beat slot i: a solid rounded
 // border for beat 1 (the accented downbeat), a dashed rounded border for
-// beats 2-4.
+// beats 2-4. This is a fixed property of the beat's position, not its
+// struck state — beat 1's border stays the one visually unique thing in
+// the row (see pillStruckTexture for how a struck beat 2-4 is indicated
+// instead).
 func pillBorderFor(i int) lipgloss.Border {
 	if i == 1 {
 		return lipgloss.RoundedBorder()
 	}
 	return pillDashedBorder
 }
+
+// pillStruckTexture is the fill used for beats 2-4 the instant they're
+// struck: a dotted/shaded block (not a flat solid fill) rendered in the
+// terminal's default foreground over the pill's own background color, so
+// struck reads as a distinct texture rather than only a brighter color —
+// this is what keeps a struck beat 2-4 from looking merely like a slightly
+// brighter idle beat once color is desaturated in grayscale (unfocused)
+// mode. Beat 1 never uses this: its permanently-solid border already makes
+// it unique, so its fill stays flat.
+const pillStruckTexture = "░"
 
 // renderBeatPill renders beat slot i as a solid-colored capsule using
 // pillBorderFor's border, with the border colored to match the fill.
@@ -441,12 +510,23 @@ func pillBorderFor(i int) lipgloss.Border {
 // short of the full terminal width.
 func (m Model) renderBeatPill(i, width int) string {
 	bg := m.beatPillBg(i)
+
+	fill := ""
+	if i != 1 && i == m.currentBeat {
+		// width-2, not width: width is the total block size border
+		// included (see the Style.Width note below), but the fill only
+		// occupies the inner content area, between the left and right
+		// border columns. Passing the full width here wrapped the ░ fill
+		// onto a second line, corrupting the row's height and alignment.
+		fill = strings.Repeat(pillStruckTexture, max(width-2, 1))
+	}
+
 	return lipgloss.NewStyle().
 		Width(width).
 		Background(bg).
 		BorderStyle(pillBorderFor(i)).
 		BorderForeground(bg).
-		Render("")
+		Render(fill)
 }
 
 // renderBeats renders the 4 beat pills. Beat 1's solid border vs. beats
@@ -575,12 +655,13 @@ var tempoBlockKeysStyle = dimStyle
 var tempoBlockValueStyle = plainStyle
 
 // tempoBlockValueStyleFor returns the value-row style for the attribute
-// with the given label.
-func tempoBlockValueStyleFor(label string) lipgloss.Style {
+// with the given label, substituting a gray tier for its color while
+// unfocused (Target's accent color is prominent, the rest are muted).
+func (m Model) tempoBlockValueStyleFor(label string) lipgloss.Style {
 	if label == "Target" {
-		return accentStyle
+		return accentStyle.Foreground(m.prominentColor(lipgloss.Color("208")))
 	}
-	return tempoBlockValueStyle
+	return tempoBlockValueStyle.Foreground(m.mutedColor(lipgloss.Color("39")))
 }
 
 // renderTempoTrainingBlocks renders each tempo-training attribute (Start,
@@ -600,7 +681,7 @@ func (m Model) renderTempoTrainingBlocks() string {
 	blocks := make([]string, len(rows))
 	for i, r := range rows {
 		blocks[i] = r.renderLabelLine(blockWidth) + "\n" +
-			tempoBlockValueStyleFor(r.label).Render(centerPad(valueUnit[i], blockWidth))
+			m.tempoBlockValueStyleFor(r.label).Render(centerPad(valueUnit[i], blockWidth))
 	}
 
 	totalBlocksWidth := blockWidth * len(blocks)

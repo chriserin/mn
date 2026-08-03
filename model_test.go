@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 )
 
@@ -232,9 +233,11 @@ func TestBeat1IsVisuallyAccented(t *testing.T) {
 	m.bpm = 120
 	m.playing = true
 
-	// Beat 1 is indicated as accented independent of color (currently: a
-	// solid border, vs. beats 2-4's dashed border), so the accent survives
-	// in a no-color/colorblind terminal.
+	// Beat 1 is indicated as accented independent of color (a solid
+	// border, vs. beats 2-4's dashed border), so the accent survives in a
+	// no-color/colorblind terminal. This is fixed by position, not struck
+	// state (see TestStruckNonAccentedBeatGetsTexturedFill for how a
+	// struck beat 2-4 is distinguished from idle instead).
 	if pillBorderFor(1) == pillBorderFor(2) {
 		t.Fatalf("expected beat 1 to be indicated as accented independent of color, but its border matches beats 2-4's")
 	}
@@ -258,6 +261,32 @@ func TestBeat1IsVisuallyAccented(t *testing.T) {
 		t.Errorf("expected beat 1's struck color to differ from beats 2-4's struck color, both rendered as %v", beat1Bg)
 	}
 	_ = beat2Bg
+}
+
+// TestStruckNonAccentedBeatGetsTexturedFill covers the grayscale-legibility
+// fix: a struck beat 2-4 must be distinguishable from an idle one by more
+// than color alone (color brightness converges toward beat 1's while
+// unfocused), so renderBeatPill fills a struck beat 2-4 with
+// pillStruckTexture instead of a flat fill.
+func TestStruckNonAccentedBeatGetsTexturedFill(t *testing.T) {
+	m := New()
+	m.currentBeat = 2
+
+	idle := m.renderBeatPill(3, 10)
+	if strings.Contains(idle, pillStruckTexture) {
+		t.Errorf("expected an idle beat's fill to have no texture, got:\n%s", idle)
+	}
+
+	struckNonAccented := m.renderBeatPill(2, 10)
+	if !strings.Contains(struckNonAccented, pillStruckTexture) {
+		t.Errorf("expected a struck beat 2-4's fill to use pillStruckTexture, got:\n%s", struckNonAccented)
+	}
+
+	m.currentBeat = 1
+	struckAccented := m.renderBeatPill(1, 10)
+	if strings.Contains(struckAccented, pillStruckTexture) {
+		t.Errorf("expected beat 1's fill to stay flat even when struck, got:\n%s", struckAccented)
+	}
 }
 
 // @ft:12
@@ -298,4 +327,75 @@ func TestShiftKMirrorsShiftUpForBPM(t *testing.T) {
 	m = press(m, "shift+k")
 
 	assertBPM(t, m, 130)
+}
+
+func TestNewDefaultsToFocused(t *testing.T) {
+	m := New()
+
+	if !m.focused {
+		t.Errorf("expected a new Model to default to focused")
+	}
+}
+
+func TestBlurMsgMarksUnfocused(t *testing.T) {
+	m := New()
+
+	next, _ := m.Update(tea.BlurMsg{})
+	m = next.(Model)
+
+	if m.focused {
+		t.Errorf("expected BlurMsg to mark the model unfocused")
+	}
+}
+
+func TestFocusMsgRestoresFocus(t *testing.T) {
+	m := New()
+	next, _ := m.Update(tea.BlurMsg{})
+	m = next.(Model)
+
+	next, _ = m.Update(tea.FocusMsg{})
+	m = next.(Model)
+
+	if !m.focused {
+		t.Errorf("expected FocusMsg to restore focus")
+	}
+}
+
+// TestUnfocusedGrayscalesColors covers the colors that carry hue while
+// focused (beat 1's accent, beats 2-4's plain color, and the tempo
+// training Target value's accent color): while unfocused they should
+// substitute one of the two gray tiers instead, so an unfocused mn doesn't
+// compete for attention with color.
+func TestUnfocusedGrayscalesColors(t *testing.T) {
+	m := New()
+	m.currentBeat = 1
+	m.tempoTrainingOn = true
+
+	focusedBeat1Bg := m.beatPillBg(1)
+	focusedTargetFg := m.tempoBlockValueStyleFor("Target").GetForeground()
+	if focusedBeat1Bg != beatAccentBg {
+		t.Errorf("expected focused beat 1 to use beatAccentBg, got %v", focusedBeat1Bg)
+	}
+	if focusedTargetFg != lipgloss.Color("208") {
+		t.Errorf("expected focused Target value to use color 208, got %v", focusedTargetFg)
+	}
+
+	next, _ := m.Update(tea.BlurMsg{})
+	m = next.(Model)
+
+	if got := m.beatPillBg(1); got != grayProminent {
+		t.Errorf("expected unfocused beat 1 to use grayProminent, got %v", got)
+	}
+	unfocusedTargetFg := m.tempoBlockValueStyleFor("Target").GetForeground()
+	if unfocusedTargetFg != grayProminent {
+		t.Errorf("expected unfocused Target value to use grayProminent, got %v", unfocusedTargetFg)
+	}
+
+	// A struck beat 2-4 must land on the same gray tier as beat 1, not a
+	// separate muted tier: otherwise a struck non-accented beat is barely
+	// distinguishable from an idle one once color is gone.
+	m.currentBeat = 2
+	if got := m.beatPillBg(2); got != grayProminent {
+		t.Errorf("expected unfocused struck beat 2 to use grayProminent (same as beat 1), got %v", got)
+	}
 }
