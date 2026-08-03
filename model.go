@@ -165,7 +165,11 @@ func clamp(v, lo, hi int) int {
 	return v
 }
 
-func tickCmd(bpm int) tea.Cmd {
+// tickCmd is a package-level var, not a plain func, so tests can substitute
+// an instant stub: its real implementation schedules a beatMsg after a
+// real time.Duration, which would make tests that execute the returned
+// tea.Cmd (e.g. to observe audio triggering) block for that duration.
+var tickCmd = func(bpm int) tea.Cmd {
 	interval := time.Minute / time.Duration(bpm)
 	return tea.Tick(interval, func(time.Time) tea.Msg { return beatMsg{} })
 }
@@ -191,10 +195,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.playing {
 				m.startBPM = m.bpm
 				// Strike beat 1 immediately rather than waiting for the
-				// first tick to elapse, so the beat indicator lights up
-				// the instant playback starts, not a full beat late.
+				// first tick to elapse, so the beat indicator (and its
+				// accented click) lights up the instant playback starts,
+				// not a full beat late.
 				m.currentBeat = 1
-				return m, tickCmd(m.bpm)
+				return m, tea.Batch(tickCmd(m.bpm), clickCmd(true))
 			}
 			// Revert any drift tempo training caused this run, rather than
 			// letting Start mirror wherever BPM ended up.
@@ -242,9 +247,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m, tickBPM := m.advanceBeat()
-		return m, tickCmd(tickBPM)
+		return m, tea.Batch(tickCmd(tickBPM), clickCmd(m.clickAccented()))
 	}
 	return m, nil
+}
+
+// clickAccented reports whether the beat currently lit should play the
+// accented (beat 1) click rather than the plain (beats 2-4) one.
+func (m Model) clickAccented() bool {
+	return m.currentBeat == 1
+}
+
+// clickCmd plays one beat's click as a side effect, reusing the same
+// beatMsg that drives the visual pulse so audio and animation share one
+// clock (see design/08-audio.md).
+func clickCmd(accented bool) tea.Cmd {
+	return func() tea.Msg {
+		playClick(accented)
+		return nil
+	}
 }
 
 // advanceBeat moves to the next beat. A tempo-training step that lands on

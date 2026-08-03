@@ -1,0 +1,44 @@
+Feature: Audio click
+  As a musician using the metronome TUI
+  I want an audible click on every beat, accented on beat 1
+  So that I can hear the tempo without watching the screen
+
+  Background:
+    Given the metronome app has started
+
+  @ft:71
+  Scenario: A click plays on every beat while playing
+    Given the metronome is playing
+    When  beat 2 is struck
+    Then  a click should be triggered
+    When  beat 3 is struck
+    Then  a click should be triggered
+
+  @ft:72
+  Scenario: Beat 1's click is accented
+    Given the metronome is playing
+    When  beat 1 is struck
+    Then  an accented click should be triggered
+
+  @ft:73
+  Scenario: Beats 2 through 4's clicks are not accented
+    Given the metronome is playing
+    When  beat 2 is struck
+    Then  a non-accented click should be triggered
+    When  beat 3 is struck
+    Then  a non-accented click should be triggered
+    When  beat 4 is struck
+    Then  a non-accented click should be triggered
+
+  @ft:74
+  Scenario: No click is triggered while stopped
+    Given the metronome is stopped
+    Then  no click should be triggered
+
+  @ft:75
+  Scenario: Audio failures are silent
+    Given audio playback is unavailable (no device)
+    And   the metronome is playing
+    When  beat 1 is struck
+    Then  no error should be shown
+    And   the metronome should continue running visual-only
