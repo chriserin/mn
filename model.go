@@ -8,6 +8,8 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+
+	"github.com/chriserin/mn/internal/bignum"
 )
 
 const (
@@ -99,6 +101,7 @@ type Model struct {
 	playing     bool
 	currentBeat int  // 0 = no beat struck yet; otherwise 1..beatsPerMeasure
 	width       int  // terminal width, used to stretch the status bar edge to edge
+	height      int  // terminal height, used to size the big-digit tempo banner; see Model.bannerScale
 	focused     bool // whether the terminal currently has focus; see tea.FocusMsg/BlurMsg
 
 	tempoTrainingOn      bool
@@ -171,6 +174,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
+		m.height = msg.Height
 		return m, nil
 	case tea.FocusMsg:
 		m.focused = true
@@ -284,20 +288,77 @@ func (m *Model) stepTempoTraining() {
 }
 
 func (m Model) View() tea.View {
-	lines := []string{m.renderStatusBar()}
+	top := []string{m.renderStatusBar()}
 	if m.tempoTrainingOn {
-		lines = append(lines, "", m.renderTempoTrainingBlocks())
+		top = append(top, "", m.renderTempoTrainingBlocks())
 	}
-	lines = append(lines,
-		"",
-		lipgloss.PlaceHorizontal(m.width, lipgloss.Center, renderBigNumber(m.bpm)),
-		"",
-		m.renderBeats(),
-	)
+	topBlock := strings.Join(top, "\n")
+	beats := m.renderBeats()
+
+	// The banner sits between topBlock and beats, each separated by a
+	// blank line, so what's left over vertically is m.height minus those
+	// two fixed blocks and the two blank-line separators.
+	availHeight := m.height - lineCount(topBlock) - 2 - lineCount(beats)
+	scale := m.bannerScale(m.width, availHeight)
+	banner := renderBigNumber(m.bpm, scale)
+
+	lines := append([]string{}, top...)
+	lines = append(lines, "")
+
+	// Vertically center the banner between topBlock and beats, and anchor
+	// beats to the bottom edge: any vertical slack left after sizing the
+	// banner (availHeight minus what the banner actually used) is split
+	// into blank lines above and below it, rather than left entirely below
+	// — so the banner sits centered in the gap instead of hugging its top,
+	// and beats still land on the last row rather than floating just under
+	// the banner. Skipped when m.height is unknown (0, e.g. before the
+	// first WindowSizeMsg or in tests that never send one), since there's
+	// nothing to center or anchor against yet.
+	if m.height > 0 {
+		if slack := availHeight - lineCount(banner); slack > 0 {
+			above := slack / 2
+			lines = append(lines, make([]string, above)...)
+		}
+	}
+
+	lines = append(lines, lipgloss.PlaceHorizontal(m.width, lipgloss.Center, banner))
+
+	if m.height > 0 {
+		if slack := availHeight - lineCount(banner); slack > 0 {
+			below := slack - slack/2
+			lines = append(lines, make([]string, below)...)
+		}
+	}
+
+	lines = append(lines, "", beats)
 	v := tea.NewView(strings.Join(lines, "\n"))
 	v.AltScreen = true
 	v.ReportFocus = true
 	return v
+}
+
+// lineCount returns the number of display rows in a possibly multi-line
+// string.
+func lineCount(s string) int {
+	return strings.Count(s, "\n") + 1
+}
+
+// bannerScale returns the largest banner tier (1..bignum.MaxScale) whose
+// rendered digits still fit within availWidth x availHeight, so the tempo
+// readout grows to fill extra room on a larger terminal but never overflows
+// a small one. availHeight <= 0 (e.g. before the first WindowSizeMsg, or in
+// tests that never send one) always falls back to the native 1x size.
+func (m Model) bannerScale(availWidth, availHeight int) int {
+	scale := 1
+	for s := 2; s <= bignum.MaxScale; s++ {
+		banner := renderBigNumber(m.bpm, s)
+		w, h := lipgloss.Width(banner), lineCount(banner)
+		if w > availWidth || h > availHeight {
+			break
+		}
+		scale = s
+	}
+	return scale
 }
 
 // playingStatus returns "PLAYING" or "STOPPED".

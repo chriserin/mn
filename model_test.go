@@ -42,7 +42,7 @@ func press(m Model, keyName string) Model {
 }
 
 func bpmLine(bpm int) string {
-	return renderBigNumber(bpm)
+	return renderBigNumber(bpm, 1)
 }
 
 // assertStatusBar compares the status bar with its ANSI styling stripped,

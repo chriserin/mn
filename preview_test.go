@@ -22,6 +22,8 @@ import (
 // defaults, stopped):
 //
 //	MN_WIDTH        terminal width, e.g. 80
+//	MN_HEIGHT       terminal height, e.g. 24 (needed for the banner to scale
+//	                up past its native size; see Model.bannerScale)
 //	MN_BPM          current BPM, e.g. 130
 //	MN_PLAYING      "1" to mark the metronome as playing
 //	MN_CURRENT_BEAT which beat (1-4) is currently struck, e.g. 2
@@ -35,6 +37,7 @@ func TestPreview(t *testing.T) {
 
 	m := New()
 	m.width = previewEnvInt("MN_WIDTH", 80)
+	m.height = previewEnvInt("MN_HEIGHT", 0)
 	m.bpm = previewEnvInt("MN_BPM", m.bpm)
 	m.playing = previewEnvBool("MN_PLAYING", false)
 	m.currentBeat = previewEnvInt("MN_CURRENT_BEAT", 0)
