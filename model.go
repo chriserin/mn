@@ -89,11 +89,14 @@ const (
 // appName is shown at the start of the status bar. See design/07-status-bar.md.
 const appName = "mn"
 
-// beatMsg is emitted once per beat by the timing engine. Recomputing the
-// next tick's duration from the current BPM each time (rather than using a
-// persistent ticker) avoids cumulative drift and lets BPM changes take
-// effect on the very next beat.
-type beatMsg struct{}
+// beatMsg is emitted once per beat. beat is the authoritative beat number
+// (1..beatsPerMeasure) when sourced from the audio engine (see
+// waitForBeat) — audioEngine.Fill (timing.go) is what actually decides
+// beat timing/number now, sample-accurately, not this message. beat == 0
+// is the fallback-path sentinel (see nextBeatCmd/tickCmd), used when no
+// audio device is available: Model.advanceBeat self-increments from its
+// own currentBeat in that case, the same way it always has.
+type beatMsg struct{ beat int }
 
 // Model is the metronome's Bubble Tea model.
 type Model struct {
@@ -195,11 +198,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.playing {
 				m.startBPM = m.bpm
 				// Strike beat 1 immediately rather than waiting for the
-				// first tick to elapse, so the beat indicator (and its
-				// accented click) lights up the instant playback starts,
-				// not a full beat late.
+				// first beat to be scheduled, so the beat indicator lights
+				// up the instant playback starts, not a full beat late.
+				// The audio engine's own first click (see timing.go's
+				// Fill, and Reset below) lands essentially immediately
+				// too, through the same mechanism as every other beat —
+				// no special-casing needed there.
 				m.currentBeat = 1
-				return m, tea.Batch(tickCmd(m.bpm), clickCmd(true))
+				return m, beginPlayback(m.bpm)
 			}
 			// Revert any drift tempo training caused this run, rather than
 			// letting Start mirror wherever BPM ended up.
@@ -207,15 +213,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.currentBeat = 0
 			m.measuresSinceStep = 0
 			m.pendingTempoStep = false
+			if audioAvailable {
+				audioEngine.SetPlaying(false)
+			}
 			return m, nil
 		case "up", "k":
 			m.bpm = clamp(m.bpm+smallStep, minBPM, maxBPM)
+			setEngineTempo(m.bpm)
 		case "down", "j":
 			m.bpm = clamp(m.bpm-smallStep, minBPM, maxBPM)
+			setEngineTempo(m.bpm)
 		case "shift+up", "K":
 			m.bpm = clamp(m.bpm+largeStep, minBPM, maxBPM)
+			setEngineTempo(m.bpm)
 		case "shift+down", "J":
 			m.bpm = clamp(m.bpm-largeStep, minBPM, maxBPM)
+			setEngineTempo(m.bpm)
 		case "t":
 			m.tempoTrainingOn = !m.tempoTrainingOn
 			if m.tempoTrainingOn {
@@ -246,37 +259,33 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if !m.playing {
 			return m, nil
 		}
-		m, tickBPM := m.advanceBeat()
-		return m, tea.Batch(tickCmd(tickBPM), clickCmd(m.clickAccented()))
+		m = m.advanceBeat(msg.beat)
+		return m, nextBeatCmd(m.bpm)
 	}
 	return m, nil
 }
 
-// clickAccented reports whether the beat currently lit should play the
-// accented (beat 1) click rather than the plain (beats 2-4) one.
-func (m Model) clickAccented() bool {
-	return m.currentBeat == 1
-}
-
-// clickCmd plays one beat's click as a side effect, reusing the same
-// beatMsg that drives the visual pulse so audio and animation share one
-// clock (see design/08-audio.md).
-func clickCmd(accented bool) tea.Cmd {
-	return func() tea.Msg {
-		playClick(accented)
-		return nil
+// advanceBeat moves to the next beat. If beat is nonzero, it's the audio
+// engine's authoritative report of which beat this is (see timing.go's
+// Fill and audio.go's waitForBeat) and currentBeat is set to it directly —
+// the UI never maintains its own independent count while audio is driving
+// beats, so it can't drift out of sync with what the engine actually
+// scheduled. beat == 0 is the no-audio-device fallback (see
+// nextBeatCmd/tickCmd), where there's no engine to ask and currentBeat
+// self-increments the same way it always has.
+//
+// A tempo-training step that lands on beat 4 (the last beat of the
+// measure, and the natural "measure complete" signal) is not applied
+// immediately — it's marked pending and only applied once beat 1 of the
+// next measure lands. This means the BPM readout itself doesn't change
+// until beat 1: a tempo change takes effect starting at the first beat of
+// the new measure, not the last beat of the old one.
+func (m Model) advanceBeat(beat int) Model {
+	if beat != 0 {
+		m.currentBeat = beat
+	} else {
+		m.currentBeat = m.currentBeat%beatsPerMeasure + 1
 	}
-}
-
-// advanceBeat moves to the next beat. A tempo-training step that lands on
-// beat 4 (the last beat of the measure, and the natural "measure complete"
-// signal) is not applied immediately — it's marked pending and only applied
-// once beat 1 of the next measure lands. This means the BPM readout itself,
-// and the tick interval that follows, don't change until beat 1: a tempo
-// change takes effect starting at the first beat of the new measure, not
-// the last beat of the old one.
-func (m Model) advanceBeat() (Model, int) {
-	m.currentBeat = m.currentBeat%beatsPerMeasure + 1
 	switch {
 	case m.currentBeat == beatsPerMeasure && m.tempoTrainingOn:
 		m.measuresSinceStep++
@@ -288,7 +297,7 @@ func (m Model) advanceBeat() (Model, int) {
 		m.pendingTempoStep = false
 		m.measuresSinceStep = 0
 	}
-	return m, m.bpm
+	return m
 }
 
 // stepTempoTraining moves bpm by stepBPM toward targetBPM, clamping so it
@@ -306,6 +315,7 @@ func (m *Model) stepTempoTraining() {
 			m.bpm = m.targetBPM
 		}
 	}
+	setEngineTempo(m.bpm)
 }
 
 func (m Model) View() tea.View {

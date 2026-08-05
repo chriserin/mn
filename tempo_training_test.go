@@ -621,18 +621,19 @@ func TestTempoChangeTakesEffectStartingAtBeatOneOfNextMeasure(t *testing.T) {
 	m = elapseBeats(m, 3)    // beats 1-3 of the 8th measure
 
 	// Beat 4 of the 8th measure: the step lands here, but isn't applied yet.
-	next, tickBPM := m.advanceBeat()
-	m = next
-	if tickBPM != 120 {
-		t.Fatalf("expected the tick immediately after beat 4 to still be paced at 120, got %d", tickBPM)
+	// (beat=0: self-advancing, the same fallback-path sentinel
+	// nextBeatCmd/tickCmd use when no audio engine is driving beats — see
+	// model.go's beatMsg doc comment.)
+	m = m.advanceBeat(0)
+	if m.bpm != 120 {
+		t.Fatalf("expected bpm to still be paced at 120 immediately after beat 4, got %d", m.bpm)
 	}
 	assertBPM(t, m, 120) // BPM readout unchanged until beat 1
 
 	// Beat 1 of the next measure: the pending step is applied now.
-	next, tickBPM = m.advanceBeat()
-	m = next
-	if tickBPM != 130 {
-		t.Fatalf("expected the tick following beat 1 of the next measure to be paced at the NEW bpm 130, got %d", tickBPM)
+	m = m.advanceBeat(0)
+	if m.bpm != 130 {
+		t.Fatalf("expected bpm to be paced at the NEW bpm 130 after beat 1 of the next measure, got %d", m.bpm)
 	}
 	assertBPM(t, m, 130)
 }
