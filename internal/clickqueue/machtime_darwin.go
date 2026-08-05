@@ -1,4 +1,10 @@
-package oto
+// This file has no oto original — it doesn't carry an Apache License
+// header because none of its content is derived from oto (unlike
+// api_darwin.go, context.go, and driver_darwin.go; see README.md). It's
+// original code, covered by mn's own top-level LICENSE like the rest of
+// this repository.
+
+package clickqueue
 
 import (
 	"fmt"

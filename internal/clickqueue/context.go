@@ -11,9 +11,13 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+//
+// NOTICE: This file has been modified from its original form (part of
+// github.com/hajimehoshi/oto's macOS AudioQueue driver). See README.md in
+// this directory for a summary of what changed and why.
 
-// Package oto is a stripped-down fork of github.com/hajimehoshi/oto's macOS
-// AudioQueue driver, vendored so its internals can be instrumented and
+// Package clickqueue is a stripped-down fork of github.com/hajimehoshi/oto's
+// macOS AudioQueue driver, vendored so its internals can be instrumented and
 // extended directly.
 //
 // Unlike upstream oto, this fork has no mux/Player layer, no io.Reader
@@ -25,7 +29,7 @@
 // rather than a separate wall-clock timer — ported from the mndriverpoc
 // POC, which validated this approach (including empirically, via
 // mic-loopback measurement) before it was brought into mn.
-package oto
+package clickqueue
 
 import (
 	"fmt"

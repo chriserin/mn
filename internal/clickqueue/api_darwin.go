@@ -11,8 +11,12 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+//
+// NOTICE: This file has been modified from its original form (part of
+// github.com/hajimehoshi/oto's macOS AudioQueue bindings). See README.md
+// in this directory for a summary of what changed and why.
 
-package oto
+package clickqueue
 
 import (
 	"unsafe"
@@ -98,20 +102,12 @@ type _AudioQueueBuffer struct {
 
 type _AudioQueueOutputCallback func(inUserData unsafe.Pointer, inAQ _AudioQueueRef, inBuffer _AudioQueueBufferRef)
 
-// _AudioQueueInputCallback is AudioQueueNewInput's callback shape — it
-// gets an AudioTimeStamp for free (inStartTime, the host time the first
-// frame of inBuffer was captured at), unlike the output callback. That's
-// used directly in recorder_darwin.go instead of a separate
-// AudioQueueGetCurrentTime call.
-type _AudioQueueInputCallback func(inUserData unsafe.Pointer, inAQ _AudioQueueRef, inBuffer _AudioQueueBufferRef, inStartTime *_AudioTimeStamp, inNumPackets uint32, inPacketDesc unsafe.Pointer)
-
 func initializeAPI() error {
 	toolbox, err := purego.Dlopen("/System/Library/Frameworks/AudioToolbox.framework/AudioToolbox", purego.RTLD_LAZY|purego.RTLD_GLOBAL)
 	if err != nil {
 		return err
 	}
 	purego.RegisterLibFunc(&_AudioQueueNewOutput, toolbox, "AudioQueueNewOutput")
-	purego.RegisterLibFunc(&_AudioQueueNewInput, toolbox, "AudioQueueNewInput")
 	purego.RegisterLibFunc(&_AudioQueueAllocateBuffer, toolbox, "AudioQueueAllocateBuffer")
 	purego.RegisterLibFunc(&_AudioQueueEnqueueBuffer, toolbox, "AudioQueueEnqueueBuffer")
 	purego.RegisterLibFunc(&_AudioQueueStart, toolbox, "AudioQueueStart")
@@ -121,8 +117,6 @@ func initializeAPI() error {
 }
 
 var _AudioQueueNewOutput func(inFormat *_AudioStreamBasicDescription, inCallbackProc _AudioQueueOutputCallback, inUserData unsafe.Pointer, inCallbackRunLoop uintptr, inCallbackRunLoopMod uintptr, inFlags uint32, outAQ *_AudioQueueRef) uintptr
-
-var _AudioQueueNewInput func(inFormat *_AudioStreamBasicDescription, inCallbackProc _AudioQueueInputCallback, inUserData unsafe.Pointer, inCallbackRunLoop uintptr, inCallbackRunLoopMod uintptr, inFlags uint32, outAQ *_AudioQueueRef) uintptr
 
 var _AudioQueueAllocateBuffer func(inAQ _AudioQueueRef, inBufferByteSize uint32, outBuffer *_AudioQueueBufferRef) uintptr
 
@@ -134,6 +128,6 @@ var _AudioQueuePause func(inAQ _AudioQueueRef) uintptr
 
 // _AudioQueueGetCurrentTime maps the queue's current playback position to
 // a host-time timestamp. inTimeline (an AudioQueueTimelineRef) and the
-// discontinuity out-param are both optional per Apple's docs; we pass 0/nil
-// since we don't track timeline discontinuities in this POC.
+// discontinuity out-param are both optional per Apple's docs; we pass
+// 0/nil since nothing here tracks timeline discontinuities.
 var _AudioQueueGetCurrentTime func(inAQ _AudioQueueRef, inTimeline uintptr, outTimeStamp *_AudioTimeStamp, outTimelineDiscontinuity *byte) uintptr

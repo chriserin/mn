@@ -14,7 +14,7 @@
 
 //go:build darwin && !ios
 
-package oto
+package clickqueue
 
 import (
 	"unsafe"

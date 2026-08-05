@@ -11,8 +11,12 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+//
+// NOTICE: This file has been modified from its original form (part of
+// github.com/hajimehoshi/oto's macOS AudioQueue driver). See README.md
+// in this directory for a summary of what changed and why.
 
-package oto
+package clickqueue
 
 import (
 	"fmt"

@@ -7,7 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/chriserin/mn/internal/oto"
+	"github.com/chriserin/mn/internal/clickqueue"
 )
 
 // Click synthesis parameters. See design/08-audio.md: a short sine burst
@@ -46,7 +46,7 @@ func synthesizeClick(freqHz float64) []float32 {
 
 // audioInitOnce/audioAvailable lazily open the audio device on the first
 // Start press, rather than at startup, and remember whether it succeeded:
-// on environments without audio output (SSH, CI, etc.) oto.NewContext
+// on environments without audio output (SSH, CI, etc.) clickqueue.NewContext
 // fails, and playback falls back to the wall-clock tick (see
 // beginPlayback/nextBeatCmd below) for the rest of the run instead of
 // retrying per beat. See design/08-audio.md "No audio output".
@@ -54,7 +54,7 @@ var (
 	audioInitOnce  sync.Once
 	audioAvailable bool
 	audioEngine    *metronomeEngine
-	audioContext   *oto.Context
+	audioContext   *clickqueue.Context
 )
 
 // ensureAudioInit is a package-level var, not a plain func, so tests can
@@ -69,7 +69,7 @@ var ensureAudioInit = func() {
 	audioInitOnce.Do(func() {
 		engine := newMetronomeEngine(sampleRate, synthesizeClick(accentFreqHz), synthesizeClick(plainFreqHz))
 
-		ctx, ready, err := oto.NewContext(&oto.NewContextOptions{
+		ctx, ready, err := clickqueue.NewContext(&clickqueue.NewContextOptions{
 			SampleRate:   sampleRate,
 			ChannelCount: channelCount,
 			BufferCount:  2, // minimal latency; see ../mndriverpoc's findings on (bufferCount-1)*bufferInterval
