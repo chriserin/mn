@@ -120,6 +120,35 @@ func TestSetTempoChangesTheNextInterval(t *testing.T) {
 	}
 }
 
+// Reproduces the freeze reported when raising the tempo mid-playback: if
+// the new, shorter samplesPerBeat puts the projected next click before the
+// start of the buffer Fill is currently asked to fill, Fill must catch up
+// and place it immediately rather than silently stalling forever (see
+// timing.go's Fill).
+func TestSetTempoCatchesUpWhenNewIntervalHasAlreadyElapsed(t *testing.T) {
+	e := testEngine()
+	e.SetTempo(60) // 1000 samples/beat
+
+	fill(e, 0, 1000) // beat 1 at frame 0; next projected beat is frame 1000
+
+	e.SetTempo(600) // 100 samples/beat — new projected beat (100) is already past
+
+	// This buffer starts well after the stale projection of frame 100.
+	_, _, clickIndex, hasClick := fill(e, 600, 100)
+	if !hasClick {
+		t.Fatal("expected Fill to catch up and place the overdue click immediately, not stall forever")
+	}
+	if clickIndex != 2 {
+		t.Fatalf("expected beat 2, got %d", clickIndex)
+	}
+
+	// And scheduling should resume normally from here, using the new
+	// tempo relative to the frame the catch-up click actually landed on.
+	if _, _, _, hasClick := fill(e, 700, 100); !hasClick {
+		t.Fatal("expected the next beat 100 samples after the catch-up click")
+	}
+}
+
 // A freshly constructed engine (playing defaults to false) and an engine
 // that's just been stopped should both produce silence — no click, no
 // error — rather than scheduling anything. This is what lets Stop/Start

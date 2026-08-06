@@ -109,6 +109,17 @@ func (e *metronomeEngine) Fill(startFrame int64, frames []float32, channelCount 
 	var nextClickFrame int64
 	if e.haveClicked {
 		nextClickFrame = e.lastClickFrame + int64(math.Round(e.samplesPerBeat))
+		if nextClickFrame < startFrame {
+			// The schedule fell into the past — typically because
+			// SetTempo shortened samplesPerBeat enough, mid-wait, that
+			// the projected click now lands before this buffer even
+			// starts. Catch up by placing it as soon as possible rather
+			// than leaving lastClickFrame untouched: otherwise this same
+			// stale nextClickFrame gets recomputed every call, forever
+			// behind startFrame, and no click is ever placed again (the
+			// engine "freezes").
+			nextClickFrame = startFrame
+		}
 	} else {
 		// Land as soon as possible rather than at a fixed origin (frame
 		// 0), so this works the same way for the very first click of the
@@ -117,7 +128,7 @@ func (e *metronomeEngine) Fill(startFrame int64, frames []float32, channelCount 
 	}
 
 	endFrame := startFrame + int64(frameCount)
-	if nextClickFrame < startFrame || nextClickFrame >= endFrame {
+	if nextClickFrame >= endFrame {
 		return 0, 0, false
 	}
 
